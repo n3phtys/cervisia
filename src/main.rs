@@ -15,7 +15,8 @@ use gtk::{
 use std::env;
 
 
-#[macro_use] extern crate closet;
+#[macro_use]
+extern crate closet;
 extern crate blrustix;
 
 use std::ops::DerefMut;
@@ -62,7 +63,7 @@ fn build_ui(application: &gtk::Application) {
         //prepare transient backup a little bit
         let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
         let mut bl3 = bl2.borrow_mut();
-        let bl : &mut RustixBackend<TransientPersister> = bl3.deref_mut();
+        let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
 
         bl.create_user("Gruin".to_string());
         bl.create_user("Vall".to_string());
@@ -77,16 +78,13 @@ fn build_ui(application: &gtk::Application) {
         bl.create_item("Whiskey".to_string(), 1200, Some("Liquor".to_string()));
 
         bl.purchase(0, 2, 12345678u32);
-
     }
-
 
 
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
         return;
     }
-
 
 
     window.set_title("Cervisia 6.0");
@@ -110,11 +108,9 @@ fn build_ui(application: &gtk::Application) {
 
 
     let model = {
-
-
         let bl2 = &*Rc::get_mut(&mut backend).unwrap();
         let bl3 = bl2.borrow();
-        let bl : &RustixBackend<TransientPersister> = bl3.deref();
+        let bl: &RustixBackend<TransientPersister> = bl3.deref();
 
         create_and_fill_model(&bl.datastore)
     };
@@ -155,8 +151,6 @@ fn build_ui(application: &gtk::Application) {
     });
 
 
-
-
     // Adding the layout to the window.
     window.add(&vertical_layout);
 
@@ -164,39 +158,44 @@ fn build_ui(application: &gtk::Application) {
     add_application_actions(application, &window);
 
     window.show_all();
-
-
 }
 
 
 fn main() {
-    //TODO: "register" app
-
     let application = gtk::Application::new("cervisia.gtk", gio::ApplicationFlags::empty())
         .expect("Initialization failed...");
 
 
-    let result_of_registration = application.register(None).expect("Registration failed");
+    {
+        let app2 = application.clone();
 
-    application.connect_startup(move |app| {
-        build_ui(app);
-    });
+        application.connect_startup(move |app| {
+            build_ui(app);
 
-    application.connect_activate(|_| {});
 
+            let result_of_registration = app2.register(None).expect("Registration failed");
+        });
+    }
 
     {
+        let app2 = application.clone();
+
+        application.connect_activate(move |_| {
+            {
+                let notification_1 = gio::Notification::new("my notification title");
+
+                notification_1.set_body("my notification body with some content");
 
 
-    let notification_1 = gio::Notification::new("my notification title");
+                notification_1.add_button("My Button", "app.id-notification-undo");
 
-    notification_1.set_body("my notification body");
+                println!("Sending Notification");
 
-        println!("Sending Notification");
+                app2.send_notification("my-notification-id", &notification_1);
 
-    application.send_notification("my-notification-id", &notification_1);
-
-        println!("Sent Notification");
+                println!("Sent Notification");
+            }
+        });
     }
 
 
@@ -241,9 +240,12 @@ fn create_and_fill_model(datastore: &Datastore) -> ListStore {
 
 
 fn add_application_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) {
-    let id_notification_undo = gio::SimpleAction::new("id_notification_undo", /*Some(glib::VariantTy::new("int"))*/ None);
+    let id_notification_undo = gio::SimpleAction::new("id-notification-undo", /*Some(glib::VariantTy::new("int"))*/ None);
     id_notification_undo.connect_activate(clone!(window => move |a, b| {
+        println!("Something something");
         println!("Received Action with a = {:?} and b = {:?}", a, b);
     }));
+    id_notification_undo.set_enabled(true);
+
     application.add_action(&id_notification_undo);
 }
