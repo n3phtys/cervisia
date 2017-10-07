@@ -1,3 +1,5 @@
+extern crate gio;
+extern crate glib;
 extern crate gtk;
 
 use gtk::prelude::*;
@@ -5,6 +7,14 @@ use gtk::{
     CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewColumn,
     Window, WindowPosition, WindowType
 };
+use gio::prelude::*;
+use gtk::{
+    AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkApplicationExt,
+    Inhibit, LabelExt, SwitchExt, ToVariant, WidgetExt,
+};
+use std::env;
+
+
 #[macro_use] extern crate closet;
 extern crate blrustix;
 
@@ -20,7 +30,30 @@ use std::borrow::*;
 use gtk::ScrolledWindow;
 use gtk::Adjustment;
 
-fn main() {
+
+// make moving clones into closures more convenient
+macro_rules! clone {
+    (@param _) => ( _ );
+    (@param $x:ident) => ( $x );
+    ($($n:ident),+ => move || $body:expr) => (
+        {
+            $( let $n = $n.clone(); )+
+            move || $body
+        }
+    );
+    ($($n:ident),+ => move |$($p:tt),+| $body:expr) => (
+        {
+            $( let $n = $n.clone(); )+
+            move |$(clone!(@param $p),)+| $body
+        }
+    );
+}
+
+
+
+fn build_ui(application: &gtk::Application) {
+    let window = gtk::ApplicationWindow::new(application);
+
     println!("Hello, world!");
 
     let mut backend = Rc::new(RefCell::new(blrustix::build_transient_backend()));
@@ -54,7 +87,7 @@ fn main() {
         return;
     }
 
-    let window = gtk::Window::new(gtk::WindowType::Toplevel);
+
 
     window.set_title("Cervisia 6.0");
     window.set_border_width(10);
@@ -127,10 +160,30 @@ fn main() {
     // Adding the layout to the window.
     window.add(&vertical_layout);
 
+
+    add_application_actions(application, &window);
+
     window.show_all();
 
-    gtk::main();
+}
 
+
+fn main() {
+    let application = gtk::Application::new("cervisia.gtk",
+                                            gio::ApplicationFlags::empty())
+        .expect("Initialization failed...");
+
+    application.connect_startup(move |app| {
+        build_ui(app);
+    });
+
+    application.connect_activate(|_| {});
+
+    //let args: Vec<&str> = env::args().map(strify).collect();
+
+    let a : &[&str] = &[];
+
+    std::process::exit(application.run(a));
 }
 
 
@@ -165,4 +218,13 @@ fn create_and_fill_model(datastore: &Datastore) -> ListStore {
         model.insert_with_values(None, &[0, 1], &[&id, &user.username]);
     }
     model
+}
+
+
+fn add_application_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) {
+    let id_notification_undo = gio::SimpleAction::new("id_notification_undo", /*Some(glib::VariantTy::new("int"))*/ None);
+    id_notification_undo.connect_activate(clone!(window => move |a, b| {
+        println!("Received Action with a = {:?} and b = {:?}", a, b);
+    }));
+    application.add_action(&id_notification_undo);
 }
