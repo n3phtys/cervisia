@@ -10,7 +10,7 @@ use gtk::{
 use gio::prelude::*;
 use gtk::{
     AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkApplicationExt,
-    Inhibit, LabelExt, SwitchExt, ToVariant, WidgetExt,
+    Inhibit, LabelExt, SwitchExt, ToVariant, WidgetExt
 };
 use std::env;
 
@@ -68,7 +68,7 @@ fn build_ui(application: &gtk::Application) {
         bl.create_user("Vall".to_string());
         bl.create_user("rad(i)".to_string());
 
-        for i in 0..997 {
+        for i in 0..99 {
             bl.create_user("GenUser #".to_string() + &i.to_string());
         }
 
@@ -95,7 +95,7 @@ fn build_ui(application: &gtk::Application) {
     window.set_default_size(1280, 720);
 
     window.connect_delete_event(|_, _| {
-        gtk::main_quit();
+        //gtk::main_quit();
         Inhibit(false)
     });
 
@@ -165,6 +165,7 @@ fn build_ui(application: &gtk::Application) {
 
     window.show_all();
 
+
 }
 
 
@@ -179,9 +180,18 @@ fn main() {
 
     application.connect_activate(|_| {});
 
-    //let args: Vec<&str> = env::args().map(strify).collect();
+
 
     let a : &[&str] = &[];
+
+
+    let app2 = gio::Application::new("cervisia.gtk", gio::ApplicationFlags::empty());
+
+    //let notification_1 = gio::Notification::new("my notification title");
+
+    //app2.send_notification("my notification id 1", notification_1);
+
+
 
     std::process::exit(application.run(a));
 }
