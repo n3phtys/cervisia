@@ -170,9 +170,13 @@ fn build_ui(application: &gtk::Application) {
 
 
 fn main() {
-    let application = gtk::Application::new("cervisia.gtk",
-                                            gio::ApplicationFlags::empty())
+    //TODO: "register" app
+
+    let application = gtk::Application::new("cervisia.gtk", gio::ApplicationFlags::empty())
         .expect("Initialization failed...");
+
+
+    let result_of_registration = application.register(None).expect("Registration failed");
 
     application.connect_startup(move |app| {
         build_ui(app);
@@ -181,17 +185,22 @@ fn main() {
     application.connect_activate(|_| {});
 
 
-
-    let a : &[&str] = &[];
-
-
-    let app2 = gio::Application::new("cervisia.gtk", gio::ApplicationFlags::empty());
-
-    //let notification_1 = gio::Notification::new("my notification title");
-
-    //app2.send_notification("my notification id 1", notification_1);
+    {
 
 
+    let notification_1 = gio::Notification::new("my notification title");
+
+    notification_1.set_body("my notification body");
+
+        println!("Sending Notification");
+
+    application.send_notification("my-notification-id", &notification_1);
+
+        println!("Sent Notification");
+    }
+
+
+    let a: &[&str] = &[];
 
     std::process::exit(application.run(a));
 }
