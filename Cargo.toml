@@ -5,9 +5,15 @@ authors = ["nephtys <christopher.kaag@gmail.com>"]
 
 [dependencies]
 blrustix = { git = "https://github.com/n3phtys/rustix-bl" }
-gtk = "0.2.0"
 closet = "0.2.2"
 glib = "0.3.1"
+
+[dependencies.gtk]
+version = "0.2.0"
+default-features = false # do not include the default features, and optionally
+                         # cherry-pick individual features
+features = ["v3_10"]
+
 
 [dependencies.gio]
 version = "0.2.0"

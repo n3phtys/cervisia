@@ -7,6 +7,9 @@ use gtk::{
     CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewColumn,
     Window, WindowPosition, WindowType
 };
+
+use gtk::{Builder, Button, MessageDialog};
+
 use gio::prelude::*;
 use gtk::{
     AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkApplicationExt,
@@ -160,10 +163,63 @@ fn build_ui(application: &gtk::Application) {
     window.show_all();
 }
 
+struct QuickmenuGtkComponents {
+    quickmenu: gtk::Dialog,
+    item_btn: [gtk::Button; 4],
+    other_drinks: gtk::Button,
+    free_be: gtk::Button,
+    statistics: gtk::Button,
+}
+
+fn build_quickmenu() -> QuickmenuGtkComponents {
+    let glade_src = include_str!("quickmenu.glade");
+    let builder = Builder::new_from_string(glade_src);
+
+    let window: gtk::Dialog = builder.get_object("quickmenu").expect("Couldn't get quickmenu");
+
+
+    let close_btn: gtk::Button = builder.get_object("close_dialog").expect("Couldn't get quickmenu");
+
+    close_btn.connect_clicked(move |_| {
+        window.hide();
+    });
+
+
+
+    return QuickmenuGtkComponents{
+        quickmenu: builder.get_object("quickmenu").expect("Couldn't get quickmenu"),
+        item_btn: [builder.get_object("item_btn_0").expect("Couldn't get item_btn_0") , builder.get_object("item_btn_1").expect("Couldn't get item_btn_1"), builder.get_object("item_btn_2").expect("Couldn't get item_btn_2"), builder.get_object("item_btn_3").expect("Couldn't get item_btn_3")],
+        other_drinks: builder.get_object("andere_getraenke").expect("Couldn't get andere_getraenke"),
+        free_be: builder.get_object("ausgeben").expect("Couldn't get ausgeben"),
+        statistics: builder.get_object("statistik").expect("Couldn't get statistik"),
+    };
+}
+
+
+fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents) {
+    //TODO: parameters like item strings, item id, and both in 4 options total
+    //TODO: user id and user name
+
+
+    quickmenu.quickmenu.show_all();
+}
+
+fn build_from_glade() {
+
+    let glade_src = include_str!("main-window.glade");
+    let builder = Builder::new_from_string(glade_src);
+
+    let window: gtk::ApplicationWindow = builder.get_object("user_selection_window").expect("Couldn't get user_selection_window");
+
+    window.show_all();
+}
+
 
 fn main() {
     let application = gtk::Application::new("cervisia.gtk", gio::ApplicationFlags::empty())
         .expect("Initialization failed...");
+
+
 
 
     {
@@ -173,8 +229,20 @@ fn main() {
             build_ui(app);
 
 
+
+            build_from_glade();
+            let mut quickmenu = build_quickmenu();
+            show_quickmenu(&mut quickmenu);
+
+
             let result_of_registration = app2.register(None).expect("Registration failed");
+
+
+
+
         });
+
+
     }
 
     {
@@ -197,6 +265,8 @@ fn main() {
             }
         });
     }
+
+
 
 
     let a: &[&str] = &[];
