@@ -25,13 +25,17 @@ extern crate blrustix;
 use std::ops::DerefMut;
 use std::cell::RefCell;
 use std::rc::Rc;
+use blrustix::*;
 use blrustix::rustix_backend::*;
 use blrustix::persistencer::*;
 use blrustix::datastore::*;
+use blrustix::rustix_backend;
 use std::cell::*;
 use std::ops::*;
 use std::borrow::*;
 use gtk::ScrolledWindow;
+use std::collections::HashSet;
+use std::collections::HashMap;
 use gtk::Adjustment;
 
 
@@ -55,10 +59,16 @@ macro_rules! clone {
 
 
 
-fn build_ui(application: &gtk::Application) {
+fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>> {
     let window = gtk::ApplicationWindow::new(application);
 
-    println!("Hello, world!");
+
+    //window.connect_keys_changed(move |key| {
+    //let k: gtk::Key = key;
+    //println!("key = {:?}", key);
+    //std::process::exit(0);
+    //});
+
 
     let mut backend = Rc::new(RefCell::new(blrustix::build_transient_backend()));
 
@@ -81,12 +91,13 @@ fn build_ui(application: &gtk::Application) {
         bl.create_item("Whiskey".to_string(), 1200, Some("Liquor".to_string()));
 
         bl.purchase(0, 2, 12345678u32);
+
     }
 
 
     if gtk::init().is_err() {
         println!("Failed to initialize GTK.");
-        return;
+        panic!("GTK failed to initialize")
     }
 
 
@@ -160,7 +171,9 @@ fn build_ui(application: &gtk::Application) {
 
     add_application_actions(application, &window);
 
-    window.show_all();
+    //window.show_all();
+
+    return backend;
 }
 
 struct QuickmenuGtkComponents {
@@ -177,7 +190,6 @@ fn build_quickmenu() -> QuickmenuGtkComponents {
 
     let window: gtk::Dialog = builder.get_object("quickmenu").expect("Couldn't get quickmenu");
 
-
     let close_btn: gtk::Button = builder.get_object("close_dialog").expect("Couldn't get quickmenu");
 
     close_btn.connect_clicked(move |_| {
@@ -185,10 +197,9 @@ fn build_quickmenu() -> QuickmenuGtkComponents {
     });
 
 
-
-    return QuickmenuGtkComponents{
+    return QuickmenuGtkComponents {
         quickmenu: builder.get_object("quickmenu").expect("Couldn't get quickmenu"),
-        item_btn: [builder.get_object("item_btn_0").expect("Couldn't get item_btn_0") , builder.get_object("item_btn_1").expect("Couldn't get item_btn_1"), builder.get_object("item_btn_2").expect("Couldn't get item_btn_2"), builder.get_object("item_btn_3").expect("Couldn't get item_btn_3")],
+        item_btn: [builder.get_object("item_btn_0").expect("Couldn't get item_btn_0"), builder.get_object("item_btn_1").expect("Couldn't get item_btn_1"), builder.get_object("item_btn_2").expect("Couldn't get item_btn_2"), builder.get_object("item_btn_3").expect("Couldn't get item_btn_3")],
         other_drinks: builder.get_object("andere_getraenke").expect("Couldn't get andere_getraenke"),
         free_be: builder.get_object("ausgeben").expect("Couldn't get ausgeben"),
         statistics: builder.get_object("statistik").expect("Couldn't get statistik"),
@@ -196,16 +207,57 @@ fn build_quickmenu() -> QuickmenuGtkComponents {
 }
 
 
-fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents) {
+fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut backend: Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>>) {
     //TODO: parameters like item strings, item id, and both in 4 options total
     //TODO: user id and user name
 
+    {
+        let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
+        let mut bl3 = bl2.borrow_mut();
+        let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
 
-    quickmenu.quickmenu.show_all();
+        let drinks_set: &HashSet<u32> = &bl.datastore.top_drinks_per_user[&user_id];
+
+        let mut drinks: Vec<u32> = Vec::new();
+
+        drinks.extend(drinks_set.into_iter());
+
+
+
+        quickmenu.quickmenu.show_all();
+
+
+        for idx in 0..4 {
+            {
+                println!("drinks length = {}", drinks.len());
+            }
+
+            if (drinks.len() > idx) {
+
+                {
+                let item_id : u32 = drinks[idx];
+                quickmenu.item_btn[idx].set_label(&bl.datastore.items[&item_id].name);
+            }
+            {
+                let item_id : u32 = drinks[idx];
+                quickmenu.item_btn[idx].connect_clicked(move |_| {
+                    println!("clicked on {}", idx);
+                });
+            }
+                {
+
+                    quickmenu.item_btn[idx].set_visible(true);
+                }
+
+            } else {
+                quickmenu.item_btn[idx].set_visible(false);
+            }
+        }
+    }
+
 }
 
 fn build_from_glade() {
-
     let glade_src = include_str!("main-window.glade");
     let builder = Builder::new_from_string(glade_src);
 
@@ -220,29 +272,20 @@ fn main() {
         .expect("Initialization failed...");
 
 
-
-
     {
         let app2 = application.clone();
 
         application.connect_startup(move |app| {
-            build_ui(app);
-
+            let mut backend = build_ui(app);
 
 
             build_from_glade();
             let mut quickmenu = build_quickmenu();
-            show_quickmenu(&mut quickmenu);
+            show_quickmenu(&mut quickmenu, 0, backend);
 
 
             let result_of_registration = app2.register(None).expect("Registration failed");
-
-
-
-
         });
-
-
     }
 
     {
@@ -250,7 +293,7 @@ fn main() {
 
         application.connect_activate(move |_| {
             {
-                let notification_1 = gio::Notification::new("my notification title");
+                let notification_1 = gio::Notification::new("my notification title 1");
 
                 notification_1.set_body("my notification body with some content");
 
@@ -259,14 +302,40 @@ fn main() {
 
                 println!("Sending Notification");
 
-                app2.send_notification("my-notification-id", &notification_1);
+                app2.send_notification("my-notification-id-1", &notification_1);
+
+                println!("Sent Notification");
+            }
+            {
+                let notification_1 = gio::Notification::new("my notification title 2");
+
+                notification_1.set_body("my notification body with some content");
+
+
+                notification_1.add_button("My Button", "app.id-notification-undo");
+
+                println!("Sending Notification");
+
+                app2.send_notification("my-notification-id-2", &notification_1);
+
+                println!("Sent Notification");
+            }
+            {
+                let notification_1 = gio::Notification::new("my notification title 3");
+
+                notification_1.set_body("my notification body with some content");
+
+
+                notification_1.add_button("My Button", "app.id-notification-undo");
+
+                println!("Sending Notification");
+
+                app2.send_notification("my-notification-id-3", &notification_1);
 
                 println!("Sent Notification");
             }
         });
     }
-
-
 
 
     let a: &[&str] = &[];
