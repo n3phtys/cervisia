@@ -195,6 +195,74 @@ fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::Rustix
     return backend;
 }
 
+struct UserWindowGtkComponents {
+    user_btn: [gtk::Button; 40],
+    action_btn: [gtk::Button; 5],
+    action_bar: gtk::ButtonBox,
+    clock_label: gtk::Label,
+    log_btn: gtk::Button,
+    search_bar: gtk::Entry,
+}
+
+
+fn render_user_buttons(searchterm: &str, quickmenu: &mut QuickmenuGtkComponents, userwindow: &mut UserWindowGtkComponents, mut backend: Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>>) {
+    //take n = 40 top users
+    //TODO: check searchterm if non-empty and take 40 users matching the term from all users
+
+
+
+
+
+    let mut top_users: Vec<u32> = Vec::new();
+
+    {
+        let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
+        let mut bl3 = bl2.borrow_mut();
+        let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
+
+        for element in &bl.datastore.top_users {
+            top_users.push(*element);
+        }
+    }
+
+
+
+{
+    let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
+    let mut bl3 = bl2.borrow_mut();
+    let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
+    for i in 0..40 {
+        if i < top_users.len() {
+            let user_id: u32 = top_users[i];
+
+            {
+                //set user name as button label
+                userwindow.user_btn[i].set_label(&bl.datastore.users[&user_id].username);
+            }
+
+            userwindow.user_btn[i].connect_clicked(move |_| {
+                println!("Pressed User ID {}", user_id);
+            });
+
+            userwindow.user_btn[i].set_visible(true);
+        } else {
+            //if top users < 40, set buttons to invisible
+            userwindow.user_btn[i].set_visible(false);
+        }
+    }
+
+
+}
+
+    //TODO: deal with action bar, etc.
+
+    //set connect_clicked to call show_quickmenu with user id
+
+
+}
+
+
+
 
 struct QuickmenuGtkComponents {
     quickmenu: gtk::Dialog,
@@ -251,7 +319,7 @@ fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut back
                 println!("drinks length = {}", drinks.len());
             }
 
-            if (drinks.len() > idx) {
+            if drinks.len() > idx {
                 {
                     let item_id: u32 = drinks[idx];
                     quickmenu.item_btn[idx].set_label(&bl.datastore.items[&item_id].name);
@@ -272,13 +340,50 @@ fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut back
     }
 }
 
-fn build_from_glade() {
+fn build_from_glade() -> UserWindowGtkComponents {
     let glade_src = include_str!("main-window.glade");
     let builder = Builder::new_from_string(glade_src);
 
     let window: gtk::ApplicationWindow = builder.get_object("user_selection_window").expect("Couldn't get user_selection_window");
 
     window.show_all();
+
+
+    let builder2 = Builder::new_from_string(glade_src);
+
+    let get_placeholder = clone_army!([builder] move || {
+        let placeholder = builder.get_object("action_btn_0").expect("Couldn't get action_btn_0");
+        return placeholder;
+    });
+
+
+    let mut action_btns: [gtk::Button; 5] = [get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder()];
+    let mut user_btns: [gtk::Button; 40] = [get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder()];
+
+    for i in 0..5 {
+        let id = format!("action_btn_{}", i);
+        let errormsg = format!("Couldn't get action_btn_{}", i);
+        action_btns[i] = builder.get_object(&id).expect(&errormsg);
+    }
+    for i in 0..40 {
+        let id = format!("user_btn_{}", i);
+        let errormsg = format!("Couldn't get user_btn_{}", i);
+        user_btns[i] = builder.get_object(&id).expect(&errormsg);
+    }
+
+    let action_box_bar : gtk::ButtonBox = builder.get_object("action_bar").expect("Couldn't get action_bar");
+    let clock_time_label : gtk::Label = builder.get_object("clock_label").expect("Couldn't get clock_label");
+    let purchase_log_btn: gtk::Button = builder.get_object("log_btn").expect("Couldn't get log_btn");
+    let search_entry: gtk::Entry = builder.get_object("search_bar").expect("Couldn't get search_bar");
+
+    return UserWindowGtkComponents {
+        user_btn: user_btns,
+        action_btn: action_btns,
+        action_bar: action_box_bar,
+        clock_label: clock_time_label,
+        log_btn: purchase_log_btn,
+        search_bar: search_entry,
+    };
 }
 
 
@@ -294,9 +399,12 @@ fn main() {
             let mut backend = build_ui(app);
 
 
-            build_from_glade();
+            let mut user_window = build_from_glade();
             let mut quickmenu = build_quickmenu();
-            show_quickmenu(&mut quickmenu, 0, backend);
+            let searchterm = "";
+            render_user_buttons(&searchterm, &mut quickmenu, &mut user_window, backend);
+
+            //DELETE THIS: show_quickmenu(&mut quickmenu, 0, backend);
 
 
             let result_of_registration = app2.register(None).expect("Registration failed");
