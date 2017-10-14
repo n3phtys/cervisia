@@ -1,6 +1,7 @@
 extern crate gio;
 extern crate glib;
 extern crate gtk;
+extern crate rand;
 
 use gtk::prelude::*;
 use gtk::{
@@ -37,6 +38,7 @@ use gtk::ScrolledWindow;
 use std::collections::HashSet;
 use std::collections::HashMap;
 use gtk::Adjustment;
+use rand::{Rng, SeedableRng, StdRng};
 
 
 // make moving clones into closures more convenient
@@ -89,9 +91,26 @@ fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::Rustix
         bl.create_item("Club Mate".to_string(), 100, Some("without alcohol".to_string()));
         bl.create_item("Pils".to_string(), 95, Some("Beer".to_string()));
         bl.create_item("Whiskey".to_string(), 1200, Some("Liquor".to_string()));
+        bl.create_item("Schirker".to_string(), 1100, Some("Liquor".to_string()));
+        bl.create_item("Kräussen".to_string(), 1100, Some("Beer".to_string()));
 
-        bl.purchase(0, 2, 12345678u32);
 
+        let seed: &[_] = &[42];
+        let mut rng: StdRng = SeedableRng::from_seed(seed);
+
+
+        let mut timestamp_counter = 12345678u32;
+        bl.purchase(0, 2, timestamp_counter);
+
+        //random purchases for the existing users
+        for user_id in 0..(bl.datastore.users.len() as u32) {
+            let nr_of_purchases: u32 = rng.gen_range(0u32, 10u32);
+            for _ in 0..nr_of_purchases {
+                timestamp_counter += 1;
+                let item_id: u32 = rng.gen_range(0u32, bl.datastore.items.len() as u32);
+                bl.purchase(user_id, item_id, timestamp_counter);
+            }
+        }
     }
 
 
@@ -176,6 +195,7 @@ fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::Rustix
     return backend;
 }
 
+
 struct QuickmenuGtkComponents {
     quickmenu: gtk::Dialog,
     item_btn: [gtk::Button; 4],
@@ -223,7 +243,6 @@ fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut back
         drinks.extend(drinks_set.into_iter());
 
 
-
         quickmenu.quickmenu.show_all();
 
 
@@ -233,28 +252,24 @@ fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut back
             }
 
             if (drinks.len() > idx) {
-
                 {
-                let item_id : u32 = drinks[idx];
-                quickmenu.item_btn[idx].set_label(&bl.datastore.items[&item_id].name);
-            }
-            {
-                let item_id : u32 = drinks[idx];
-                quickmenu.item_btn[idx].connect_clicked(move |_| {
-                    println!("clicked on {}", idx);
-                });
-            }
+                    let item_id: u32 = drinks[idx];
+                    quickmenu.item_btn[idx].set_label(&bl.datastore.items[&item_id].name);
+                }
                 {
-
+                    let item_id: u32 = drinks[idx];
+                    quickmenu.item_btn[idx].connect_clicked(move |_| {
+                        println!("clicked on {}", idx);
+                    });
+                }
+                {
                     quickmenu.item_btn[idx].set_visible(true);
                 }
-
             } else {
                 quickmenu.item_btn[idx].set_visible(false);
             }
         }
     }
-
 }
 
 fn build_from_glade() {
