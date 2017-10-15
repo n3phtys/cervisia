@@ -68,36 +68,26 @@ macro_rules! clone {
 //static mut global_x: u32 = 42;
 
 
+const NUMBER_OF_USERS_PER_PAGE : u8 = 40;
+
+
 unsafe impl Sync for QuickmenuGtkComponents {} //hack
 unsafe impl Send for QuickmenuGtkComponents {} //hack
 
 lazy_static! {
-    static ref GLOBAL_BACKEND: Mutex<rustix_backend::RustixBackend<persistencer::TransientPersister>> = Mutex::new(blrustix::build_transient_backend());
+    static ref GLOBAL_BACKEND: Mutex<rustix_backend::RustixBackend<persistencer::TransientPersister>> = Mutex::new(blrustix::build_transient_backend_with(NUMBER_OF_USERS_PER_PAGE , NUMBER_OF_USERS_PER_PAGE));
     static ref GLOBAL_QUICKMENU: Mutex<QuickmenuGtkComponents> = Mutex::new(build_quickmenu());
 }
 
 
 
-fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>> {
+fn build_ui(application: &gtk::Application)  {
     let window = gtk::ApplicationWindow::new(application);
 
 
-
-
-    //window.connect_keys_changed(move |key| {
-    //let k: gtk::Key = key;
-    //println!("key = {:?}", key);
-    //std::process::exit(0);
-    //});
-
-
-    let mut backend = Rc::new(RefCell::new(blrustix::build_transient_backend()));
-
     {
         //prepare transient backup a little bit
-        let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
-        let mut bl3 = bl2.borrow_mut();
-        let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
+        let bl: &mut RustixBackend<TransientPersister> = &mut GLOBAL_BACKEND.lock().unwrap();
 
         bl.create_user("Gruin".to_string());
         bl.create_user("Vall".to_string());
@@ -159,16 +149,7 @@ fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::Rustix
     let tree = create_and_setup_view();
 
 
-    let model = {
-        let bl2 = &*Rc::get_mut(&mut backend).unwrap();
-        let bl3 = bl2.borrow();
-        let bl: &RustixBackend<TransientPersister> = bl3.deref();
-
-        create_and_fill_model(&bl.datastore)
-    };
-
     // Setting the model into the view.
-    tree.set_model(Some(&model));
     // Adding the view to the layout.
 
     let scroll = {
@@ -178,29 +159,7 @@ fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::Rustix
         wdw
     };
 
-    vertical_layout.add(&scroll);
 
-    {
-        scroll.add(&tree);
-    }
-
-    // Same goes for the label.
-    vertical_layout.add(&label);
-
-    // The closure responds to selection changes by connection to "::cursor-changed" signal,
-    // that gets emitted when the cursor moves (focus changes).
-    tree.connect_cursor_changed(move |tree_view| {
-        let selection = tree_view.get_selection();
-        if let Some((model, iter)) = selection.get_selected() {
-            // Now getting back the values from the row corresponding to the
-            // iterator `iter`.
-            //
-            // The `get_value` method do the conversion between the gtk type and Rust.
-            label.set_text(&format!("Hello '{}' from row {}",
-                                    model.get_value(&iter, 1).get::<String>().unwrap(),
-                                    model.get_value(&iter, 0).get::<u32>().unwrap()));
-        }
-    });
 
 
     // Adding the layout to the window.
@@ -210,12 +169,10 @@ fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::Rustix
     add_application_actions(application, &window);
 
     //window.show_all();
-
-    return backend;
 }
 
 struct UserWindowGtkComponents {
-    user_btn: [gtk::Button; 40],
+    user_btn: [gtk::Button; NUMBER_OF_USERS_PER_PAGE as usize],
     action_btn: [gtk::Button; 5],
     action_bar: gtk::ButtonBox,
     clock_label: gtk::Label,
@@ -224,22 +181,19 @@ struct UserWindowGtkComponents {
 }
 
 
-fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkComponents>>, userwindow: &mut UserWindowGtkComponents, mut backend: Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>>) {
+fn render_user_buttons(searchterm: &str, userwindow: &mut UserWindowGtkComponents) {
     //take n = 40 top users
     //TODO: check searchterm if non-empty and take 40 users matching the term from all users
 
 
 
-    println!("Before method: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+    //println!("Before method: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
 
     let mut top_users: Vec<u32> = Vec::new();
 
     {
-        let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
-        let mut bl3 = bl2.borrow_mut();
-        let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
-
+        let bl = GLOBAL_BACKEND.lock().unwrap();
         for element in &bl.datastore.top_users {
             top_users.push(*element);
         }
@@ -251,29 +205,29 @@ fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkCompo
 
 
 
-        println!("Before loop: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+       // println!("Before loop: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
 
-    for i in 0..40 {
+    for i in 0..NUMBER_OF_USERS_PER_PAGE as usize {
         if i < top_users.len() {
             let user_id: u32 = top_users[i];
 
-            println!("Line {}", i);
+      //      println!("Line {}", i);
 
             {
-                println!("{} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
-                let bl2: &RustixBackend<TransientPersister> = &Rc::deref(&backend).borrow();
+        //        println!("{} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+                let bl2: &RustixBackend<TransientPersister> = &GLOBAL_BACKEND.lock().unwrap();
                 //set user name as button label
                 userwindow.user_btn[i].set_label(&bl2.datastore.users[&user_id].username);
             }
 
-            println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+    //        println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
             {
 
 
                 userwindow.user_btn[i].connect_clicked(move |_| {
-                println!("Pressed User ID {}", user_id);
+  //              println!("Pressed User ID {}", user_id);
                     let qm = &mut GLOBAL_QUICKMENU.lock().unwrap();
                     let bl = & GLOBAL_BACKEND.lock().unwrap();
                 show_quickmenu(qm, user_id, bl);
@@ -281,7 +235,7 @@ fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkCompo
             }
 
 
-            println!("End of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+//            println!("End of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
             userwindow.user_btn[i].set_visible(true);
         } else {
@@ -292,8 +246,6 @@ fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkCompo
 
 
 
-        let backend = Rc::downgrade(&backend);
-        let quickmenu = Rc::downgrade(&quickmenu);
 
 }
 
@@ -400,14 +352,14 @@ fn build_from_glade() -> UserWindowGtkComponents {
 
 
     let mut action_btns: [gtk::Button; 5] = [get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder()];
-    let mut user_btns: [gtk::Button; 40] = [get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder()];
+    let mut user_btns: [gtk::Button; NUMBER_OF_USERS_PER_PAGE as usize] = [get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(),get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder(), get_placeholder()];
 
     for i in 0..5 {
         let id = format!("action_btn_{}", i);
         let errormsg = format!("Couldn't get action_btn_{}", i);
         action_btns[i] = builder.get_object(&id).expect(&errormsg);
     }
-    for i in 0..40 {
+    for i in 0..NUMBER_OF_USERS_PER_PAGE as usize {
         let id = format!("user_btn_{}", i);
         let errormsg = format!("Couldn't get user_btn_{}", i);
         user_btns[i] = builder.get_object(&id).expect(&errormsg);
@@ -438,14 +390,13 @@ fn main() {
         let app2 = application.clone();
 
         application.connect_startup(move |app| {
-            let mut backend = build_ui(app);
+            build_ui(app);
 
 
             let mut user_window = build_from_glade();
-            let mut quickmenu = Rc::new(RefCell::new( build_quickmenu()));
             let searchterm = "";
-            println!("Before method call: {} weak references and {} strong ones", Rc::weak_count(&quickmenu), Rc::strong_count(&quickmenu));
-            render_user_buttons(&searchterm, quickmenu, &mut user_window, backend);
+            //println!("Before method call: {} weak references and {} strong ones", Rc::weak_count(&quickmenu), Rc::strong_count(&quickmenu));
+            render_user_buttons(&searchterm, &mut user_window);
 
             //DELETE THIS: show_quickmenu(&mut quickmenu, 0, backend);
 
