@@ -67,8 +67,13 @@ macro_rules! clone {
 
 //static mut global_x: u32 = 42;
 
+
+unsafe impl Sync for QuickmenuGtkComponents {} //hack
+unsafe impl Send for QuickmenuGtkComponents {} //hack
+
 lazy_static! {
     static ref GLOBAL_BACKEND: Mutex<rustix_backend::RustixBackend<persistencer::TransientPersister>> = Mutex::new(blrustix::build_transient_backend());
+    static ref GLOBAL_QUICKMENU: Mutex<QuickmenuGtkComponents> = Mutex::new(build_quickmenu());
 }
 
 
