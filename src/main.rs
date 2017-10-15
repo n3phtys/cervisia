@@ -60,9 +60,13 @@ macro_rules! clone {
 }
 
 
+//static mut global_x: u32 = 42;
+
 
 fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>> {
     let window = gtk::ApplicationWindow::new(application);
+
+
 
 
     //window.connect_keys_changed(move |key| {
@@ -257,8 +261,8 @@ fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkCompo
 
                 userwindow.user_btn[i].connect_clicked(clone_army!([quickmenu2, backend2, user_id] move |_| {
                 println!("Pressed User ID {}", user_id);
-                let mut quickmenu3 = quickmenu2.upgrade().expect("Upgrade of Weak Quickmenu failed");
                 let mut backend3 = backend2.upgrade().expect("Upgrade of Weak Backend failed");
+                let mut quickmenu3 = quickmenu2.upgrade().expect("Upgrade of Weak Quickmenu failed");
                 let mut qm2 = &*Rc::get_mut(&mut quickmenu3).unwrap();
     let mut qm3 = qm2.borrow_mut();
     let qm: &mut QuickmenuGtkComponents = qm3.deref_mut();
@@ -276,6 +280,10 @@ fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkCompo
         }
     }
 
+
+
+        let backend = Rc::downgrade(&backend);
+        let quickmenu = Rc::downgrade(&quickmenu);
 
 }
 
@@ -427,12 +435,15 @@ fn main() {
             let mut user_window = build_from_glade();
             let mut quickmenu = Rc::new(RefCell::new( build_quickmenu()));
             let searchterm = "";
+            println!("Before method call: {} weak references and {} strong ones", Rc::weak_count(&quickmenu), Rc::strong_count(&quickmenu));
             render_user_buttons(&searchterm, quickmenu, &mut user_window, backend);
 
             //DELETE THIS: show_quickmenu(&mut quickmenu, 0, backend);
 
 
             let result_of_registration = app2.register(None).expect("Registration failed");
+
+
         });
     }
 
