@@ -270,19 +270,14 @@ fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkCompo
             println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
             {
-                let mut backend2 = Rc::downgrade(&backend);
-                let mut quickmenu2 = Rc::downgrade(&quickmenu);
 
 
-                userwindow.user_btn[i].connect_clicked(clone_army!([quickmenu2, backend2, user_id] move |_| {
+                userwindow.user_btn[i].connect_clicked(move |_| {
                 println!("Pressed User ID {}", user_id);
-                let mut backend3 = backend2.upgrade().expect("Upgrade of Weak Backend failed");
-                let mut quickmenu3 = quickmenu2.upgrade().expect("Upgrade of Weak Quickmenu failed");
-                let mut qm2 = &*Rc::get_mut(&mut quickmenu3).unwrap();
-    let mut qm3 = qm2.borrow_mut();
-    let qm: &mut QuickmenuGtkComponents = qm3.deref_mut();
-                show_quickmenu(qm, user_id, backend3);
-            }));
+                    let qm = &mut GLOBAL_QUICKMENU.lock().unwrap();
+                    let bl = & GLOBAL_BACKEND.lock().unwrap();
+                show_quickmenu(qm, user_id, bl);
+            });
             }
 
 
@@ -343,16 +338,15 @@ fn build_quickmenu() -> QuickmenuGtkComponents {
 }
 
 
-fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut backend: Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>>) {
+fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, backend: & rustix_backend::RustixBackend<persistencer::TransientPersister>) {
     //TODO: parameters like item strings, item id, and both in 4 options total
     //TODO: user id and user name
 
     {
-        let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
-        let mut bl3 = bl2.borrow_mut();
-        let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
 
-        let drinks_set: &HashSet<u32> = &bl.datastore.top_drinks_per_user[&user_id];
+        println!("Whole Backend on show_quickmenu = {:?}", backend);
+
+        let drinks_set: &HashSet<u32> = &backend.datastore.top_drinks_per_user[&user_id];
 
         let mut drinks: Vec<u32> = Vec::new();
 
@@ -370,7 +364,7 @@ fn show_quickmenu(quickmenu: &mut QuickmenuGtkComponents, user_id: u32, mut back
             if drinks.len() > idx {
                 {
                     let item_id: u32 = drinks[idx];
-                    quickmenu.item_btn[idx].set_label(&bl.datastore.items[&item_id].name);
+                    quickmenu.item_btn[idx].set_label(&backend.datastore.items[&item_id].name);
                 }
                 {
                     let item_id: u32 = drinks[idx];
