@@ -23,9 +23,14 @@ use std::env;
 extern crate closet;
 extern crate blrustix;
 
+#[macro_use]
+extern crate lazy_static;
+
+
 use std::ops::DerefMut;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::Mutex;
 use blrustix::*;
 use blrustix::rustix_backend::*;
 use blrustix::persistencer::*;
@@ -61,6 +66,11 @@ macro_rules! clone {
 
 
 //static mut global_x: u32 = 42;
+
+lazy_static! {
+    static ref GLOBAL_BACKEND: Mutex<rustix_backend::RustixBackend<persistencer::TransientPersister>> = Mutex::new(blrustix::build_transient_backend());
+}
+
 
 
 fn build_ui(application: &gtk::Application) -> Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>> {

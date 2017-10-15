@@ -8,6 +8,7 @@ blrustix = { git = "https://github.com/n3phtys/rustix-bl" }
 closet = "0.2.2"
 glib = "0.3.1"
 rand = "0.3"
+lazy_static = "0.2"
 
 [dependencies.gtk]
 version = "0.2.0"
