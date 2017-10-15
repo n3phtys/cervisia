@@ -205,12 +205,13 @@ struct UserWindowGtkComponents {
 }
 
 
-fn render_user_buttons(searchterm: &str, quickmenu: &mut QuickmenuGtkComponents, userwindow: &mut UserWindowGtkComponents, mut backend: Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>>) {
+fn render_user_buttons(searchterm: &str, quickmenu: Rc<RefCell<QuickmenuGtkComponents>>, userwindow: &mut UserWindowGtkComponents, mut backend: Rc<RefCell<rustix_backend::RustixBackend<persistencer::TransientPersister>>>) {
     //take n = 40 top users
     //TODO: check searchterm if non-empty and take 40 users matching the term from all users
 
 
 
+    println!("Before method: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
 
     let mut top_users: Vec<u32> = Vec::new();
@@ -227,22 +228,46 @@ fn render_user_buttons(searchterm: &str, quickmenu: &mut QuickmenuGtkComponents,
 
 
 
-{
-    let mut bl2 = &*Rc::get_mut(&mut backend).unwrap();
-    let mut bl3 = bl2.borrow_mut();
-    let bl: &mut RustixBackend<TransientPersister> = bl3.deref_mut();
+    {
+
+
+
+        println!("Before loop: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+
+
     for i in 0..40 {
         if i < top_users.len() {
             let user_id: u32 = top_users[i];
 
+            println!("Line {}", i);
+
             {
+                println!("{} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+                let bl2: &RustixBackend<TransientPersister> = &Rc::deref(&backend).borrow();
                 //set user name as button label
-                userwindow.user_btn[i].set_label(&bl.datastore.users[&user_id].username);
+                userwindow.user_btn[i].set_label(&bl2.datastore.users[&user_id].username);
             }
 
-            userwindow.user_btn[i].connect_clicked(move |_| {
+            println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
+
+            {
+                let mut backend2 = Rc::downgrade(&backend);
+                let mut quickmenu2 = Rc::downgrade(&quickmenu);
+
+
+                userwindow.user_btn[i].connect_clicked(clone_army!([quickmenu2, backend2, user_id] move |_| {
                 println!("Pressed User ID {}", user_id);
-            });
+                let mut quickmenu3 = quickmenu2.upgrade().expect("Upgrade of Weak Quickmenu failed");
+                let mut backend3 = backend2.upgrade().expect("Upgrade of Weak Backend failed");
+                let mut qm2 = &*Rc::get_mut(&mut quickmenu3).unwrap();
+    let mut qm3 = qm2.borrow_mut();
+    let qm: &mut QuickmenuGtkComponents = qm3.deref_mut();
+                show_quickmenu(qm, user_id, backend3);
+            }));
+            }
+
+
+            println!("End of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
             userwindow.user_btn[i].set_visible(true);
         } else {
@@ -400,9 +425,9 @@ fn main() {
 
 
             let mut user_window = build_from_glade();
-            let mut quickmenu = build_quickmenu();
+            let mut quickmenu = Rc::new(RefCell::new( build_quickmenu()));
             let searchterm = "";
-            render_user_buttons(&searchterm, &mut quickmenu, &mut user_window, backend);
+            render_user_buttons(&searchterm, quickmenu, &mut user_window, backend);
 
             //DELETE THIS: show_quickmenu(&mut quickmenu, 0, backend);
 
