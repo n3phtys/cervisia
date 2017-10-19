@@ -22,6 +22,8 @@ extern crate closet;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate time;
+
 
 use blrustix::*;
 use blrustix::datastore::*;
@@ -258,6 +260,7 @@ struct QuickmenuGtkComponents {
     other_drinks: gtk::Button,
     free_be: gtk::Button,
     statistics: gtk::Button,
+    close_btn: gtk::Button,
 }
 
 fn build_quickmenu() -> QuickmenuGtkComponents {
@@ -294,6 +297,7 @@ fn build_quickmenu() -> QuickmenuGtkComponents {
                         .expect("Couldn't get ausgeben"),
         statistics: builder.get_object("statistik")
                            .expect("Couldn't get statistik"),
+        close_btn: close_btn,
     };
 }
 
@@ -332,7 +336,14 @@ fn show_quickmenu(
                 {
                     let item_id: u32 = drinks[idx];
                     quickmenu.item_btn[idx].connect_clicked(move |_| {
-                        println!("clicked on {}", idx);
+                        {
+                            let epoch_seconds = time::get_time().sec as u32;
+                            let bl: &mut RustixBackend<TransientPersister>  = &mut GLOBAL_BACKEND
+                                    .lock().expect("Beerlist variable was not available anymore");
+                            println!("buying {} in quickmenu at epoch seconds {}", idx, epoch_seconds);
+                            let result = bl.purchase(user_id, item_id, epoch_seconds);
+                        }
+                        GLOBAL_QUICKMENU.lock().expect("Global Window no longer available").close_btn.clicked();
                     });
                 }
                 {
