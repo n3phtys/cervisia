@@ -1,0 +1,8 @@
+array_layout = "Block"
+array_width = 80
+reorder_imports = true
+reorder_imports_in_group = true
+reorder_imported_names = true
+chain_indent = "Visual"
+imports_indent = "Visual"
+error_on_line_overflow_comments = false
