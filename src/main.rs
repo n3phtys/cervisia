@@ -24,6 +24,8 @@ extern crate lazy_static;
 
 extern crate time;
 
+extern crate chrono;
+
 
 use blrustix::*;
 use blrustix::datastore::*;
@@ -43,6 +45,8 @@ use std::ops::DerefMut;
 use std::rc::Rc;
 use std::sync::Mutex;
 
+
+use chrono::prelude::*;
 
 // make moving clones into closures more convenient
 macro_rules! clone {
@@ -71,6 +75,8 @@ const NUMBER_OF_USERS_PER_PAGE: u8 = 40;
 
 unsafe impl Sync for QuickmenuGtkComponents {} //hack
 unsafe impl Send for QuickmenuGtkComponents {} //hack
+unsafe impl Sync for UserWindowGtkComponents {} //hack
+unsafe impl Send for UserWindowGtkComponents {} //hack
 
 lazy_static! {
     static ref GLOBAL_BACKEND:
@@ -79,6 +85,7 @@ lazy_static! {
             NUMBER_OF_USERS_PER_PAGE , NUMBER_OF_USERS_PER_PAGE
             ));
     static ref GLOBAL_QUICKMENU: Mutex<QuickmenuGtkComponents> = Mutex::new(build_quickmenu());
+    static ref GLOBAL_USERWINDOW: Mutex<UserWindowGtkComponents> = Mutex::new(build_from_glade());
 }
 
 
@@ -179,15 +186,28 @@ fn build_ui(application: &gtk::Application) {
 
 struct UserWindowGtkComponents {
     user_btn: [gtk::Button; NUMBER_OF_USERS_PER_PAGE as usize],
-    action_btn: [gtk::Button; 5],
+    action_btn: [gtk::Button; 6],
     action_bar: gtk::ButtonBox,
     clock_label: gtk::Label,
     log_btn: gtk::Button,
     search_bar: gtk::Entry,
 }
 
+fn render_last_purchase(user: &str, drink: &str) {
 
-fn render_user_buttons(searchterm: &str, userwindow: &mut UserWindowGtkComponents) {
+    //should be the same as used in the purchase struct
+    let timelabel = Local::now().format("%Y-%m-%d %H:%M:%S");
+
+    GLOBAL_USERWINDOW.lock().expect("Global UserWindow variable does not exist anymore").log_btn
+        .set_label(&format!("User {} bought 1 {} at {}", user, drink, timelabel));
+
+}
+
+fn render_user_buttons(searchterm: &str) {
+
+    let userwindow: &mut UserWindowGtkComponents = &mut GLOBAL_USERWINDOW
+        .lock().expect("Global UserWindow variable does not exist anymore");
+
     //take n = 40 top users
     //TODO: check searchterm if non-empty and take 40 users matching the term from all users
 
@@ -336,14 +356,17 @@ fn show_quickmenu(
                 {
                     let item_id: u32 = drinks[idx];
                     quickmenu.item_btn[idx].connect_clicked(move |_| {
+                        GLOBAL_QUICKMENU.lock().expect("Global Window no longer available").close_btn.clicked();
+                        let epoch_seconds = time::get_time().sec as u32;
                         {
-                            let epoch_seconds = time::get_time().sec as u32;
                             let bl: &mut RustixBackend<TransientPersister>  = &mut GLOBAL_BACKEND
                                     .lock().expect("Beerlist variable was not available anymore");
                             println!("buying {} in quickmenu at epoch seconds {}", idx, epoch_seconds);
                             let result = bl.purchase(user_id, item_id, epoch_seconds);
+                            let item_lbl = &bl.datastore.items[&item_id].name;
+                            let user_lbl = &bl.datastore.users[&user_id].username;
+                            render_last_purchase(user_lbl, item_lbl);
                         }
-                        GLOBAL_QUICKMENU.lock().expect("Global Window no longer available").close_btn.clicked();
                     });
                 }
                 {
@@ -374,7 +397,8 @@ fn build_from_glade() -> UserWindowGtkComponents {
     });
 
 
-    let mut action_btns: [gtk::Button; 5] = [
+    let mut action_btns: [gtk::Button; 6] = [
+        get_placeholder(),
         get_placeholder(),
         get_placeholder(),
         get_placeholder(),
@@ -424,11 +448,15 @@ fn build_from_glade() -> UserWindowGtkComponents {
         get_placeholder(),
     ];
 
-    for i in 0..5 {
+    for i in 0..6 {
         let id = format!("action_btn_{}", i);
         let errormsg = format!("Couldn't get action_btn_{}", i);
         action_btns[i] = builder.get_object(&id).expect(&errormsg);
     }
+    //close button
+    action_btns[5].connect_clicked(move |_| {
+        std::process::exit(0);
+    });
     for i in 0..NUMBER_OF_USERS_PER_PAGE as usize {
         let id = format!("user_btn_{}", i);
         let errormsg = format!("Couldn't get user_btn_{}", i);
@@ -467,11 +495,9 @@ fn main() {
         application.connect_startup(move |app| {
             build_ui(app);
 
-
-            let mut user_window = build_from_glade();
             let searchterm = "";
             //println!("Before method call: {} weak references and {} strong ones", Rc::weak_count(&quickmenu), Rc::strong_count(&quickmenu));
-            render_user_buttons(&searchterm, &mut user_window);
+            render_user_buttons(&searchterm);
 
             //DELETE THIS: show_quickmenu(&mut quickmenu, 0, backend);
 
