@@ -194,19 +194,24 @@ struct UserWindowGtkComponents {
 }
 
 fn render_last_purchase(user: &str, drink: &str) {
-
     //should be the same as used in the purchase struct
     let timelabel = Local::now().format("%Y-%m-%d %H:%M:%S");
 
-    GLOBAL_USERWINDOW.lock().expect("Global UserWindow variable does not exist anymore").log_btn
-        .set_label(&format!("User {} bought 1 {} at {}", user, drink, timelabel));
-
+    GLOBAL_USERWINDOW.lock()
+                     .expect("Global UserWindow variable does not exist anymore")
+                     .log_btn
+                     .set_label(&format!(
+        "User {} bought 1 {} at {}",
+        user,
+        drink,
+        timelabel
+    ));
 }
 
 fn render_user_buttons(searchterm: &str) {
-
-    let userwindow: &mut UserWindowGtkComponents = &mut GLOBAL_USERWINDOW
-        .lock().expect("Global UserWindow variable does not exist anymore");
+    let userwindow: &mut UserWindowGtkComponents = &mut GLOBAL_USERWINDOW.lock().expect(
+        "Global UserWindow variable does not exist anymore",
+    );
 
     //take n = 40 top users
     //TODO: check searchterm if non-empty and take 40 users matching the term from all users
@@ -356,12 +361,22 @@ fn show_quickmenu(
                 {
                     let item_id: u32 = drinks[idx];
                     quickmenu.item_btn[idx].connect_clicked(move |_| {
-                        GLOBAL_QUICKMENU.lock().expect("Global Window no longer available").close_btn.clicked();
+                        GLOBAL_QUICKMENU.lock()
+                                        .expect("Global Window no longer available")
+                                        .close_btn
+                                        .clicked();
                         let epoch_seconds = time::get_time().sec as u32;
                         {
-                            let bl: &mut RustixBackend<TransientPersister>  = &mut GLOBAL_BACKEND
-                                    .lock().expect("Beerlist variable was not available anymore");
-                            println!("buying {} in quickmenu at epoch seconds {}", idx, epoch_seconds);
+                            let bl: &mut RustixBackend<
+                                TransientPersister,
+                            > = &mut GLOBAL_BACKEND.lock().expect(
+                                "Beerlist variable was not available anymore",
+                            );
+                            println!(
+                                "buying {} in quickmenu at epoch seconds {}",
+                                idx,
+                                epoch_seconds
+                            );
                             let result = bl.purchase(user_id, item_id, epoch_seconds);
                             let item_lbl = &bl.datastore.items[&item_id].name;
                             let user_lbl = &bl.datastore.users[&user_id].username;
