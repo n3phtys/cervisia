@@ -647,3 +647,47 @@ fn add_application_actions(application: &gtk::Application, window: &gtk::Applica
 
     application.add_action(&id_notification_undo);
 }
+
+
+
+//TODO: show notification whenever a purchase is made, with all data and the undo action
+//TODO: build second Thread with 2 channels (one per direction), takes Purchases with date in future and sends a batch to GTK thread whenever 1 or more are "finished"
+//TODO: handler function on main thread takes such a Purchase object, and sends it to database AND rewrites current last purchase log with that data
+//TODO: need function to translate u32 into string (or chrono struct)
+//TODO: the channel to that secondary thread can also take "undo" events. Those will remove a purchase (if possible) before it is sent (if the undo comes later, write an error message to log but ignore undo). Those undo events are spawned by the undo action.
+
+
+
+
+//TODO: create simple function for dealing with password checks (creates a dialog after taking one closure to execute in success). The success function will obviously be executed on the GTK thread, but with the spawnage the whole function becomes async (to wait on user input)
+//TODO: don't forget to clear the Password Dialog when showing it
+
+//TODO: whenever top users change (return value of make_purchase), redraw top users and rerender. The same has to be done when the users are changed, example via edit, create or delete
+
+
+
+//TODO: add suffix tree (first: mock / quadratic solution). Has to be rebuild during startup AND whenever a user is changed, created or deleted.
+//TODO: suffix tree should allow case insensitive searchc (compile flag!)
+
+
+//TODO: do not show admin actions when searchbar is empty and not in focus. Once it's non-empty, search the available actions. One button can have more than one searchterms (conf that in a file)
+
+//TODO: everytime the focus of the searchbar changes OR the content of it changes, call the rerender function with the correct searchterm. Also show / do not show action buttons as applicable
+
+
+//TODO: should only care at one line of code if file-based persistence is used or only transient memory
+
+
+//TODO: reorder / refactor code as following:
+/*
+Following architecture:
+- all dialogs and windows are parsed via lazy_static into a mutex (if performance is low, go with Rc<Refcell> instead
+    -  things like the clock are also spawned in those builder functions
+- backend is created with via lazy_static too. In the same process the reload-method of the backend is called (before the GUI is created, that's important)
+    - for the time being, this is replaced by just loading the mock data
+- the main only registers application actions and shows the main window immediately afterwards, after calling an init method
+- this init method only calls the right render methods, for example to fill the GUI with the first batch of users
+- builder functions and statics are moved to their own file / module
+- helper methods are moved to their own file / module
+- functions like "show_purchase_notifications" also become their own functions, but get what they need from static variables themselves
+*/
