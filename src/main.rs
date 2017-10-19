@@ -379,6 +379,11 @@ fn show_quickmenu(
     }
 }
 
+
+fn current_time() -> String {
+    return format!("{} Uhr", Local::now().format("%Y-%m-%d %H:%M:%S"));
+}
+
 fn build_from_glade() -> UserWindowGtkComponents {
     let glade_src = include_str!("main-window.glade");
     let builder = Builder::new_from_string(glade_src);
@@ -467,6 +472,22 @@ fn build_from_glade() -> UserWindowGtkComponents {
                                                 .expect("Couldn't get action_bar");
     let clock_time_label: gtk::Label = builder.get_object("clock_label")
                                               .expect("Couldn't get clock_label");
+
+    {
+        let clock_clone = clock_time_label.clone();
+        let time = current_time();
+        clock_clone.set_text(&time);
+
+        let tick = move || {
+            let time = current_time();
+            clock_clone.set_text(&time);
+            gtk::Continue(true)
+        };
+
+        // executes the closure once every second
+        gtk::timeout_add_seconds(1, tick);
+    }
+
     let purchase_log_btn: gtk::Button =
         builder.get_object("log_btn").expect("Couldn't get log_btn");
     let search_entry: gtk::Entry = builder.get_object("search_bar")
