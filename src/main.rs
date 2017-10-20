@@ -32,6 +32,7 @@ use blrustix::datastore::*;
 use blrustix::persistencer::*;
 use blrustix::rustix_backend;
 use blrustix::rustix_backend::*;
+use blrustix::datastore::Purchase::SimplePurchase;
 use gtk::Adjustment;
 use gtk::ScrolledWindow;
 use rand::{Rng, SeedableRng, StdRng};
@@ -44,6 +45,9 @@ use std::ops::*;
 use std::ops::DerefMut;
 use std::rc::Rc;
 use std::sync::Mutex;
+use std::sync::mpsc::channel;
+use std::thread;
+use std::sync::mpsc::{Sender, Receiver};
 
 
 use chrono::prelude::*;
@@ -86,7 +90,151 @@ lazy_static! {
             ));
     static ref GLOBAL_QUICKMENU: Mutex<QuickmenuGtkComponents> = Mutex::new(build_quickmenu());
     static ref GLOBAL_USERWINDOW: Mutex<UserWindowGtkComponents> = Mutex::new(build_from_glade());
+
+    static ref ADD_OR_UNDO_PURCHASE : Mutex<(Sender<Purchase>, Sender<Purchase>)> = Mutex::new(build_purchase_debouncer());
+
 }
+
+
+
+fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
+    let (add_tx, add_rx): (Sender<Purchase>, Receiver<Purchase>) = channel();
+
+    let (undo_tx, undo_rx): (Sender<Purchase>, Receiver<Purchase>) = channel();
+
+    {
+        thread::spawn(move || {
+
+            let added_purchases = add_rx;
+            let undone_purchases = undo_rx;
+
+            //listen to adds, listen to undoes, process results, and sleep for the next cycle
+
+            let mut queue_of_purchases: std::vec::Vec<Purchase> = vec!();
+
+            loop {
+                //println!("debouncer loop begins");
+
+                for add in added_purchases.try_iter() {
+                    match add {
+                        Purchase::SimplePurchase {
+                            timestamp_seconds,
+                            item_id,
+                            consumer_id,
+                        } => {
+                            queue_of_purchases.push(Purchase::SimplePurchase {
+                                timestamp_seconds,
+                                item_id,
+                                consumer_id,
+                            });
+                        },
+                    }
+                }
+
+                for undo in undone_purchases.try_iter() {
+                    match undo {
+                        Purchase::SimplePurchase {
+                            timestamp_seconds,
+                            item_id,
+                            consumer_id,
+                        } => {
+                            let ts: u32 = timestamp_seconds;
+                            let iid: u32 = item_id;
+                            let cid: u32 = consumer_id;
+
+                            queue_of_purchases.retain(|element| match element {
+                                &Purchase::SimplePurchase {
+                                    ref timestamp_seconds,
+                                    ref item_id,
+                                    ref consumer_id,
+                                } => timestamp_seconds != &ts || item_id != &iid || consumer_id != &cid,
+                                _ => true,
+                            });
+                        },
+                    }
+                }
+
+
+                let timestamp: u32 = time::get_time().sec as u32;;
+
+
+                queue_of_purchases.retain(|element: &Purchase| match element {
+                    &Purchase::SimplePurchase {
+                        ref timestamp_seconds,
+                        ref item_id,
+                        ref consumer_id,
+                    } => {
+                        if (*timestamp_seconds >= timestamp) {
+                             return true;
+                        } else {
+                            println!("Purchase Debounce finished: user {:?}, item {:?}, timestamp {:?}", consumer_id, item_id, timestamp_seconds);
+                            finalize_purchase(*consumer_id, *item_id, *timestamp_seconds);
+                            return false;
+                        }
+                    },
+                    _ => true,
+                });
+
+
+
+                thread::sleep(std::time::Duration::from_millis(100)); //TODO: set to something like 10 seconds to deal with notification
+            }
+
+
+
+
+            println!("thread finished");
+        });
+    }
+
+
+    return (add_tx, undo_tx);
+
+}
+
+
+fn enqueue_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
+    //move purchase to
+    ADD_OR_UNDO_PURCHASE.lock().unwrap().0.send(Purchase::SimplePurchase {
+        consumer_id: user_id,
+        item_id: item_id,
+        timestamp_seconds: epoch_seconds,
+    });
+}
+
+fn finalize_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
+    //set on_idle task to call bl and write to database, followed by all the other interactions
+
+    {
+        let exec = move || {
+
+            println!("exec started");
+
+            let bl: &mut RustixBackend<
+                TransientPersister,
+            > = &mut GLOBAL_BACKEND.lock().expect(
+                "Beerlist variable was not available anymore",
+            );
+
+
+            let result = bl.purchase(user_id, item_id, epoch_seconds);
+            let item_lbl = &bl.datastore.items[&item_id].name;
+            let user_lbl = &bl.datastore.users[&user_id].username;
+            render_last_purchase(user_lbl, item_lbl);
+
+            println!("render_last_purchase happened");
+
+            gtk::Continue(false)
+        };
+
+        // executes the closure on next chance:
+        glib::source::idle_add(exec);
+
+        println!("exec in gtk queue");
+    }
+
+}
+
 
 
 
@@ -367,20 +515,15 @@ fn show_quickmenu(
                                         .clicked();
                         let epoch_seconds = time::get_time().sec as u32;
                         {
-                            let bl: &mut RustixBackend<
-                                TransientPersister,
-                            > = &mut GLOBAL_BACKEND.lock().expect(
-                                "Beerlist variable was not available anymore",
-                            );
+
                             println!(
                                 "buying {} in quickmenu at epoch seconds {}",
                                 idx,
                                 epoch_seconds
                             );
-                            let result = bl.purchase(user_id, item_id, epoch_seconds);
-                            let item_lbl = &bl.datastore.items[&item_id].name;
-                            let user_lbl = &bl.datastore.users[&user_id].username;
-                            render_last_purchase(user_lbl, item_lbl);
+                            enqueue_purchase(user_id, item_id, epoch_seconds);
+
+
                         }
                     });
                 }
@@ -520,6 +663,9 @@ fn build_from_glade() -> UserWindowGtkComponents {
 
 
 fn main() {
+
+
+
     let application = gtk::Application::new("cervisia.gtk", gio::ApplicationFlags::empty()).expect(
         "Initialization failed...",
     );
