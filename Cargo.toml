@@ -5,6 +5,7 @@ authors = ["nephtys <christopher.kaag@gmail.com>"]
 
 [dependencies]
 blrustix = { git = "https://github.com/n3phtys/rustix-bl" }
+suffix = { git = "https://github.com/n3phtys/suffix-rs" }
 closet = "0.2.2"
 glib = "0.3.1"
 rand = "0.3"

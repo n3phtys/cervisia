@@ -19,12 +19,20 @@ extern crate blrustix;
 #[macro_use]
 extern crate closet;
 
+extern crate suffix;
+
 #[macro_use]
 extern crate lazy_static;
 
 extern crate time;
 
 extern crate chrono;
+
+
+pub mod glade_builders;
+pub mod input_handling;
+pub mod static_variables;
+pub mod cervisia_utilities;
 
 
 use blrustix::*;
@@ -44,10 +52,15 @@ use std::collections::HashSet;
 use std::ops::*;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use suffix::KDTree;
 use std::sync::Mutex;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::sync::mpsc::{Sender, Receiver};
+use glade_builders::*;
+use cervisia_utilities::*;
+use input_handling::*;
+use static_variables::*;
 
 
 use chrono::prelude::*;
@@ -70,17 +83,17 @@ macro_rules! clone {
     );
 }
 
-
-//static mut global_x: u32 = 42;
-
-
-const NUMBER_OF_USERS_PER_PAGE: u8 = 40;
+//TODO: remove old connect handlers before setting new ones, if not will lead to multi click handling
+//TODO: both in user buttons and drink buttons
+//TODO: alternative: build code handling into builder-functions, and never set new connect signals - instead store user and item id globally and go with those values
 
 
-unsafe impl Sync for QuickmenuGtkComponents {} //hack
-unsafe impl Send for QuickmenuGtkComponents {} //hack
-unsafe impl Sync for UserWindowGtkComponents {} //hack
-unsafe impl Send for UserWindowGtkComponents {} //hack
+
+
+use glade_builders::QuickmenuGtkComponents;
+use glade_builders::UserWindowGtkComponents;
+use glade_builders::build_from_glade;
+use glade_builders::build_quickmenu;
 
 lazy_static! {
     static ref GLOBAL_BACKEND:
@@ -95,7 +108,21 @@ lazy_static! {
 
 }
 
+fn redraw_users() {
 
+    let searchterm: &str = {
+        let userwindow = GLOBAL_USERWINDOW.lock().unwrap();
+        &userwindow.search_bar.get_buffer().get_text()
+    };
+
+
+    //if empty input, show saufbubbies and no action btns
+    //if not, show searched subset of users and subset of action btns
+
+    render_user_buttons(searchterm);
+
+
+}
 
 fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
     let (add_tx, add_rx): (Sender<Purchase>, Receiver<Purchase>) = channel();
@@ -332,15 +359,6 @@ fn build_ui(application: &gtk::Application) {
     //window.show_all();
 }
 
-struct UserWindowGtkComponents {
-    user_btn: [gtk::Button; NUMBER_OF_USERS_PER_PAGE as usize],
-    action_btn: [gtk::Button; 6],
-    action_bar: gtk::ButtonBox,
-    clock_label: gtk::Label,
-    log_btn: gtk::Button,
-    search_bar: gtk::Entry,
-}
-
 fn render_last_purchase(user: &str, drink: &str) {
     //should be the same as used in the purchase struct
     let timelabel = Local::now().format("%Y-%m-%d %H:%M:%S");
@@ -364,19 +382,41 @@ fn render_user_buttons(searchterm: &str) {
     //take n = 40 top users
     //TODO: check searchterm if non-empty and take 40 users matching the term from all users
 
+    let mut top_users: Vec<u32> = Vec::new();
+
+    if (searchterm.is_empty()) {
+        userwindow.action_bar.set_visible(false);
+
+
+
+        {
+            let bl = GLOBAL_BACKEND.lock().unwrap();
+            for element in &bl.datastore.top_users {
+                top_users.push(*element);
+            }
+        }
+
+
+    } else {
+        userwindow.action_bar.set_visible(true);
+
+        //match via suffix tree and take at most NUMBER_OF_USERS_PER_PAGE
+
+        {
+            let bl = GLOBAL_BACKEND.lock().unwrap();
+
+            for element in bl.datastore.users_suffix_tree.search(searchterm).iter().take(NUMBER_OF_USERS_PER_PAGE as usize) {
+                top_users.push(element.id);
+            }
+        }
+
+    }
+
 
 
     //println!("Before method: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
 
-    let mut top_users: Vec<u32> = Vec::new();
-
-    {
-        let bl = GLOBAL_BACKEND.lock().unwrap();
-        for element in &bl.datastore.top_users {
-            top_users.push(*element);
-        }
-    }
 
 
 
@@ -400,6 +440,7 @@ fn render_user_buttons(searchterm: &str) {
                 //        println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
                 {
+                    //TODO: move this instead to a global variable for user_id, and a global function
                     userwindow.user_btn[i].connect_clicked(move |_| {
                         //              println!("Pressed User ID {}", user_id);
                         let qm = &mut GLOBAL_QUICKMENU.lock().unwrap();
@@ -425,54 +466,6 @@ fn render_user_buttons(searchterm: &str) {
 }
 
 
-
-
-struct QuickmenuGtkComponents {
-    quickmenu: gtk::Dialog,
-    item_btn: [gtk::Button; 4],
-    other_drinks: gtk::Button,
-    free_be: gtk::Button,
-    statistics: gtk::Button,
-    close_btn: gtk::Button,
-}
-
-fn build_quickmenu() -> QuickmenuGtkComponents {
-    let glade_src = include_str!("quickmenu.glade");
-    let builder = Builder::new_from_string(glade_src);
-
-    let window: gtk::Dialog = builder.get_object("quickmenu")
-                                     .expect("Couldn't get quickmenu");
-
-    let close_btn: gtk::Button = builder.get_object("close_dialog")
-                                        .expect("Couldn't get quickmenu");
-
-    close_btn.connect_clicked(move |_| {
-        window.hide();
-    });
-
-
-    return QuickmenuGtkComponents {
-        quickmenu: builder.get_object("quickmenu")
-                          .expect("Couldn't get quickmenu"),
-        item_btn: [
-            builder.get_object("item_btn_0")
-                   .expect("Couldn't get item_btn_0"),
-            builder.get_object("item_btn_1")
-                   .expect("Couldn't get item_btn_1"),
-            builder.get_object("item_btn_2")
-                   .expect("Couldn't get item_btn_2"),
-            builder.get_object("item_btn_3")
-                   .expect("Couldn't get item_btn_3"),
-        ],
-        other_drinks: builder.get_object("andere_getraenke")
-                             .expect("Couldn't get andere_getraenke"),
-        free_be: builder.get_object("ausgeben")
-                        .expect("Couldn't get ausgeben"),
-        statistics: builder.get_object("statistik")
-                           .expect("Couldn't get statistik"),
-        close_btn: close_btn,
-    };
-}
 
 
 fn show_quickmenu(
@@ -508,12 +501,16 @@ fn show_quickmenu(
                 }
                 {
                     let item_id: u32 = drinks[idx];
+
+
                     quickmenu.item_btn[idx].connect_clicked(move |_| {
-                        GLOBAL_QUICKMENU.lock()
-                                        .expect("Global Window no longer available")
-                                        .close_btn
-                                        .clicked();
-                        let epoch_seconds = time::get_time().sec as u32;
+                        let quickmenu = GLOBAL_QUICKMENU.lock()
+                                        .expect("Global Window no longer available");
+
+                        quickmenu.close_btn.clicked();
+
+
+                        let epoch_seconds = time::get_time().sec as u32 + 0; //TODO implement delay here in seconds
                         {
 
                             println!(
@@ -537,129 +534,6 @@ fn show_quickmenu(
     }
 }
 
-
-fn current_time() -> String {
-    return format!("{} Uhr", Local::now().format("%Y-%m-%d %H:%M:%S"));
-}
-
-fn build_from_glade() -> UserWindowGtkComponents {
-    let glade_src = include_str!("main-window.glade");
-    let builder = Builder::new_from_string(glade_src);
-
-    let window: gtk::ApplicationWindow = builder.get_object("user_selection_window")
-                                                .expect("Couldn't get user_selection_window");
-
-    window.show_all();
-
-
-    let builder2 = Builder::new_from_string(glade_src);
-
-    let get_placeholder = clone_army!([builder] move || {
-        let placeholder = builder.get_object("action_btn_0").expect("Couldn't get action_btn_0");
-        return placeholder;
-    });
-
-
-    let mut action_btns: [gtk::Button; 6] = [
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-    ];
-    let mut user_btns: [gtk::Button; NUMBER_OF_USERS_PER_PAGE as usize] = [
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-        get_placeholder(),
-    ];
-
-    for i in 0..6 {
-        let id = format!("action_btn_{}", i);
-        let errormsg = format!("Couldn't get action_btn_{}", i);
-        action_btns[i] = builder.get_object(&id).expect(&errormsg);
-    }
-    //close button
-    action_btns[5].connect_clicked(move |_| {
-        std::process::exit(0);
-    });
-    for i in 0..NUMBER_OF_USERS_PER_PAGE as usize {
-        let id = format!("user_btn_{}", i);
-        let errormsg = format!("Couldn't get user_btn_{}", i);
-        user_btns[i] = builder.get_object(&id).expect(&errormsg);
-    }
-
-    let action_box_bar: gtk::ButtonBox = builder.get_object("action_bar")
-                                                .expect("Couldn't get action_bar");
-    let clock_time_label: gtk::Label = builder.get_object("clock_label")
-                                              .expect("Couldn't get clock_label");
-
-    {
-        let clock_clone = clock_time_label.clone();
-        let time = current_time();
-        clock_clone.set_text(&time);
-
-        let tick = move || {
-            let time = current_time();
-            clock_clone.set_text(&time);
-            gtk::Continue(true)
-        };
-
-        // executes the closure once every second
-        gtk::timeout_add_seconds(1, tick);
-    }
-
-    let purchase_log_btn: gtk::Button =
-        builder.get_object("log_btn").expect("Couldn't get log_btn");
-    let search_entry: gtk::Entry = builder.get_object("search_bar")
-                                          .expect("Couldn't get search_bar");
-
-    return UserWindowGtkComponents {
-        user_btn: user_btns,
-        action_btn: action_btns,
-        action_bar: action_box_bar,
-        clock_label: clock_time_label,
-        log_btn: purchase_log_btn,
-        search_bar: search_entry,
-    };
-}
 
 
 fn main() {
