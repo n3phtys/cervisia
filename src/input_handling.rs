@@ -1,33 +1,33 @@
 #![allow(unused_imports)]
 
 
+use blrustix::persistencer::TransientPersister;
+use blrustix::rustix_backend::RustixBackend;
+use enqueue_purchase;
+use glade_builders::NUMBER_OF_USERS_PER_PAGE;
+use glade_builders::UserWindowGtkComponents;
+use show_quickmenu;
+use static_variables::ADD_OR_UNDO_PURCHASE;
 use static_variables::GLOBAL_BACKEND;
 use static_variables::GLOBAL_QUICKMENU;
 use static_variables::GLOBAL_USERWINDOW;
-use static_variables::ADD_OR_UNDO_PURCHASE;
+use static_variables::ITEMS_ON_SCREEN;
 use static_variables::USERS_ON_SCREEN;
 use static_variables::USER_SELECTED;
-use static_variables::ITEMS_ON_SCREEN;
-use show_quickmenu;
-use enqueue_purchase;
-use time;
 use suffix::KDTree;
-use glade_builders::UserWindowGtkComponents;
-use glade_builders::NUMBER_OF_USERS_PER_PAGE;
-use blrustix::rustix_backend::RustixBackend;
-use blrustix::persistencer::TransientPersister;
+use time;
 
 use chrono::*;
+use chrono::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ops::*;
 use std::ops::DerefMut;
 use std::rc::Rc;
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc::channel;
 use std::thread;
-use std::sync::mpsc::{Sender, Receiver};
-use chrono::prelude::*;
 
 
 use gtk::{CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewColumn, Window,
@@ -39,14 +39,13 @@ use gtk::{Builder, Button, MessageDialog};
 
 pub fn quickmenu_item_btn_pressed(index: usize) {
     let quickmenu = GLOBAL_QUICKMENU.lock()
-        .expect("Global Window no longer available");
+                                    .expect("Global Window no longer available");
 
     quickmenu.close_btn.clicked();
 
 
     let epoch_seconds = time::get_time().sec as u32 + 0; //TODO implement delay here in seconds
     {
-
         println!(
             "buying {} in quickmenu at epoch seconds {}",
             index,
@@ -54,20 +53,17 @@ pub fn quickmenu_item_btn_pressed(index: usize) {
         );
 
 
-        println!("User_id from last time was {:?}", *USER_SELECTED.lock().unwrap());
+        println!(
+            "User_id from last time was {:?}",
+            *USER_SELECTED.lock().unwrap()
+        );
 
         if let Some(ref user_id) = *USER_SELECTED.lock().unwrap() {
-
-
             let item_id: u32 = ITEMS_ON_SCREEN.lock().unwrap()[index];
 
 
             enqueue_purchase(*user_id, item_id, epoch_seconds);
-
         }
-
-
-
     }
 }
 
@@ -85,7 +81,6 @@ pub fn user_btn_pressed(index: usize) {
 }
 
 pub fn search_entry_text_changed() {
-
     let searchterm: &str = {
         let userwindow = GLOBAL_USERWINDOW.lock().unwrap();
         &userwindow.search_bar.get_buffer().get_text()
@@ -110,14 +105,14 @@ pub fn render_last_purchase(user: &str, drink: &str) {
     let timelabel = Local::now().format("%Y-%m-%d %H:%M:%S");
 
     GLOBAL_USERWINDOW.lock()
-        .expect("Global UserWindow variable does not exist anymore")
-        .log_btn
-        .set_label(&format!(
-            "User {} bought 1 {} at {}",
-            user,
-            drink,
-            timelabel
-        ));
+                     .expect("Global UserWindow variable does not exist anymore")
+                     .log_btn
+                     .set_label(&format!(
+        "User {} bought 1 {} at {}",
+        user,
+        drink,
+        timelabel
+    ));
 }
 
 
@@ -148,11 +143,8 @@ fn render_user_buttons(searchterm: &str) {
             for element in &bl.datastore.top_users {
                 top_users.push(*element);
                 target_list.push(*element);
-
             }
         }
-
-
     } else {
         userwindow.action_bar.set_visible(true);
 
@@ -173,10 +165,7 @@ fn render_user_buttons(searchterm: &str) {
                 top_users.push(element.id);
                 target_list.push(element.id);
             }
-
-
         }
-
     }
 
 
@@ -206,9 +195,7 @@ fn render_user_buttons(searchterm: &str) {
 
                 //        println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
 
-                {
-
-                }
+                {}
 
 
                 //            println!("End of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
@@ -222,5 +209,4 @@ fn render_user_buttons(searchterm: &str) {
     }
 
     //TODO: deal with action bar, etc.
-
 }

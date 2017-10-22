@@ -12,11 +12,11 @@ use gtk::{Builder, Button, MessageDialog};
 use gio::prelude::*;
 use gtk::{AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkApplicationExt,
           Inhibit, LabelExt, SwitchExt, ToVariant, WidgetExt};
-use std::env;
 use std;
+use std::env;
 
-use input_handling::user_btn_pressed;
 use input_handling::quickmenu_item_btn_pressed;
+use input_handling::user_btn_pressed;
 
 
 use cervisia_utilities::current_time;
@@ -38,10 +38,10 @@ pub fn build_quickmenu() -> QuickmenuGtkComponents {
     let builder = Builder::new_from_string(glade_src);
 
     let window: gtk::Dialog = builder.get_object("quickmenu")
-        .expect("Couldn't get quickmenu");
+                                     .expect("Couldn't get quickmenu");
 
     let close_btn: gtk::Button = builder.get_object("close_dialog")
-        .expect("Couldn't get quickmenu");
+                                        .expect("Couldn't get quickmenu");
 
     close_btn.connect_clicked(move |_| {
         window.hide();
@@ -49,13 +49,13 @@ pub fn build_quickmenu() -> QuickmenuGtkComponents {
 
     let mut item_btns: [gtk::Button; 4 as usize] = [
         builder.get_object("item_btn_0")
-            .expect("Couldn't get item_btn_0"),
+               .expect("Couldn't get item_btn_0"),
         builder.get_object("item_btn_1")
-            .expect("Couldn't get item_btn_1"),
+               .expect("Couldn't get item_btn_1"),
         builder.get_object("item_btn_2")
-            .expect("Couldn't get item_btn_2"),
+               .expect("Couldn't get item_btn_2"),
         builder.get_object("item_btn_3")
-            .expect("Couldn't get item_btn_3"),
+               .expect("Couldn't get item_btn_3"),
     ];
 
     for i in 0..4 {
@@ -68,14 +68,14 @@ pub fn build_quickmenu() -> QuickmenuGtkComponents {
 
     return QuickmenuGtkComponents {
         quickmenu: builder.get_object("quickmenu")
-            .expect("Couldn't get quickmenu"),
+                          .expect("Couldn't get quickmenu"),
         item_btn: item_btns,
         other_drinks: builder.get_object("andere_getraenke")
-            .expect("Couldn't get andere_getraenke"),
+                             .expect("Couldn't get andere_getraenke"),
         free_be: builder.get_object("ausgeben")
-            .expect("Couldn't get ausgeben"),
+                        .expect("Couldn't get ausgeben"),
         statistics: builder.get_object("statistik")
-            .expect("Couldn't get statistik"),
+                           .expect("Couldn't get statistik"),
         close_btn: close_btn,
     };
 }
@@ -86,7 +86,7 @@ pub fn build_from_glade() -> UserWindowGtkComponents {
     let builder = Builder::new_from_string(glade_src);
 
     let window: gtk::ApplicationWindow = builder.get_object("user_selection_window")
-        .expect("Couldn't get user_selection_window");
+                                                .expect("Couldn't get user_selection_window");
 
     window.show_all();
 
@@ -170,9 +170,9 @@ return placeholder;
     }
 
     let action_box_bar: gtk::ButtonBox = builder.get_object("action_bar")
-        .expect("Couldn't get action_bar");
+                                                .expect("Couldn't get action_bar");
     let clock_time_label: gtk::Label = builder.get_object("clock_label")
-        .expect("Couldn't get clock_label");
+                                              .expect("Couldn't get clock_label");
 
     {
         let clock_clone = clock_time_label.clone();
@@ -192,7 +192,7 @@ return placeholder;
     let purchase_log_btn: gtk::Button =
         builder.get_object("log_btn").expect("Couldn't get log_btn");
     let search_entry: gtk::SearchEntry = builder.get_object("search_bar")
-        .expect("Couldn't get search_bar");
+                                                .expect("Couldn't get search_bar");
 
     {
         search_entry.connect_search_changed(move |_| {
@@ -201,6 +201,8 @@ return placeholder;
     }
 
     return UserWindowGtkComponents {
+        application_window: builder.get_object("user_selection_window")
+                                   .expect("Couldn't get user_selection_window"),
         user_btn: user_btns,
         action_btn: action_btns,
         action_bar: action_box_bar,
@@ -212,6 +214,7 @@ return placeholder;
 
 
 pub struct UserWindowGtkComponents {
+    pub application_window: gtk::ApplicationWindow,
     pub user_btn: [gtk::Button; NUMBER_OF_USERS_PER_PAGE as usize],
     pub action_btn: [gtk::Button; 6],
     pub action_bar: gtk::ButtonBox,
