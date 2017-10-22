@@ -74,7 +74,7 @@ use static_variables::USERS_ON_SCREEN;
 use static_variables::USER_SELECTED;
 
 // make moving clones into closures more convenient
-macro_rules! clone {
+/*macro_rules! clone {
     (@param _) => ( _ );
     (@param $x:ident) => ( $x );
     ($($n:ident),+ => move || $body:expr) => (
@@ -89,7 +89,7 @@ macro_rules! clone {
             move |$(clone!(@param $p),)+| $body
         }
     );
-}
+}*/
 
 
 
@@ -166,7 +166,8 @@ fn show_quickmenu(
         drinks.extend(drinks_set.into_iter());
 
 
-        quickmenu.quickmenu.set_transient_for(&GLOBAL_USERWINDOW.lock().unwrap().application_window);
+        quickmenu.quickmenu
+                 .set_transient_for(&GLOBAL_USERWINDOW.lock().unwrap().application_window);
 
         quickmenu.quickmenu.show_all();
 
@@ -205,7 +206,6 @@ fn main() {
 
 
     {
-
         application.connect_startup(move |app| {
             if gtk::init().is_err() {
                 println!("Failed to initialize GTK.");
@@ -217,67 +217,23 @@ fn main() {
             input_handling::search_entry_text_changed();
 
 
-            let result_of_registration = app.register(None).expect("Registration failed");
 
 
             let window: &gtk::ApplicationWindow =
                 &GLOBAL_USERWINDOW.lock().unwrap().application_window;
             window.set_application(Some(app));
             window.show();
-            add_application_actions(app, window);
+            add_application_actions(app);
 
 
-
-            {
-                {
-                    let notification_1 = gio::Notification::new("my notification title 1");
-
-                    notification_1.set_body("my notification body with some content");
-
-
-                    notification_1.add_button("My Button", "app.id-notification-undo");
-
-                    println!("Sending Notification");
-
-                    app.send_notification("my-notification-id-1", &notification_1);
-
-                    println!("Sent Notification");
-                }
-                {
-                    let notification_1 = gio::Notification::new("my notification title 2");
-
-                    notification_1.set_body("my notification body with some content");
-
-
-                    notification_1.add_button("My Button", "app.id-notification-undo");
-
-                    println!("Sending Notification");
-
-                    app.send_notification("my-notification-id-2", &notification_1);
-
-                    println!("Sent Notification");
-                }
-                {
-                    let notification_1 = gio::Notification::new("my notification title 3");
-
-                    notification_1.set_body("my notification body with some content");
-
-
-                    notification_1.add_button("My Button", "app.id-notification-undo");
-
-                    println!("Sending Notification");
-
-                    app.send_notification("my-notification-id-3", &notification_1);
-
-                    println!("Sent Notification");
-                }
-            }
+            let _ = app.register(None).expect("Registration failed");
         });
     }
 
     {
         application.connect_activate(move |_| {});
     }
+
 
 
     let a: &[&str] = &[];
@@ -287,16 +243,40 @@ fn main() {
 }
 
 
+pub fn show_notification(title: &str, body: &str, id: u32) {
+    let application = &GLOBAL_USERWINDOW.lock()
+                                        .unwrap()
+                                        .application_window
+                                        .get_application()
+                                        .expect("Application not set!");
 
-fn add_application_actions(application: &gtk::Application, window: &gtk::ApplicationWindow) {
+    let notification_1 = gio::Notification::new(title);
+
+    notification_1.set_body(body);
+
+
+    notification_1.add_button("Undo", "app.id-notification-undo");
+
+    println!("Sending Notification");
+
+
+    let id_lbl = format!("my-notification-id-{}", id);
+    application.send_notification(Some(&*id_lbl), &notification_1);
+
+    println!("Sent Notification");
+}
+
+
+
+fn add_application_actions(application: &gtk::Application) {
     let id_notification_undo = gio::SimpleAction::new(
         "id-notification-undo",
         /*Some(glib::VariantTy::new("int"))*/ None,
     );
-    id_notification_undo.connect_activate(clone!(window => move |a, b| {
+    id_notification_undo.connect_activate(move |a, b| {
         println!("Something something");
         println!("Received Action with a = {:?} and b = {:?}", a, b);
-    }));
+    });
     id_notification_undo.set_enabled(true);
 
     application.add_action(&id_notification_undo);

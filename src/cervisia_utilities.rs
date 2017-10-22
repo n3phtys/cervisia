@@ -102,7 +102,6 @@ pub fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
                                     timestamp_seconds != &ts || item_id != &iid
                                         || consumer_id != &cid
                                 }
-                                _ => true,
                             });
                         }
                     }
@@ -129,7 +128,6 @@ pub fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
                         finalize_purchase(*consumer_id, *item_id, *timestamp_seconds);
                         return false;
                     },
-                    _ => true,
                 });
 
 
@@ -146,10 +144,10 @@ pub fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
 
 pub fn enqueue_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
     //move purchase to
-    ADD_OR_UNDO_PURCHASE.lock()
-                        .unwrap()
-                        .0
-                        .send(Purchase::SimplePurchase {
+    let _ = ADD_OR_UNDO_PURCHASE.lock()
+                                .unwrap()
+                                .0
+                                .send(Purchase::SimplePurchase {
         consumer_id: user_id,
         item_id: item_id,
         timestamp_seconds: epoch_seconds,
@@ -168,7 +166,7 @@ pub fn finalize_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
             );
 
 
-            let result = bl.purchase(user_id, item_id, epoch_seconds);
+            let _ = bl.purchase(user_id, item_id, epoch_seconds); //TODO: use result
             let item_lbl = &bl.datastore.items[&item_id].name;
             let user_lbl = &bl.datastore.users[&user_id].username;
             render_last_purchase(user_lbl, item_lbl);

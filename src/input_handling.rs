@@ -37,11 +37,20 @@ use gtk::prelude::*;
 use gtk::{Builder, Button, MessageDialog};
 
 
+use show_notification;
+
 pub fn quickmenu_item_btn_pressed(index: usize) {
+    {
+        show_notification("My title", "My body", 42);
+    }
+
     let quickmenu = GLOBAL_QUICKMENU.lock()
                                     .expect("Global Window no longer available");
 
     quickmenu.close_btn.clicked();
+
+
+
 
 
     let epoch_seconds = time::get_time().sec as u32 + 0; //TODO implement delay here in seconds

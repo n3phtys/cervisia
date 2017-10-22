@@ -47,7 +47,7 @@ pub fn build_quickmenu() -> QuickmenuGtkComponents {
         window.hide();
     });
 
-    let mut item_btns: [gtk::Button; 4 as usize] = [
+    let item_btns: [gtk::Button; 4 as usize] = [
         builder.get_object("item_btn_0")
                .expect("Couldn't get item_btn_0"),
         builder.get_object("item_btn_1")
@@ -90,8 +90,6 @@ pub fn build_from_glade() -> UserWindowGtkComponents {
 
     window.show_all();
 
-
-    let builder2 = Builder::new_from_string(glade_src);
 
     let get_placeholder = clone_army!([builder] move || {
 let placeholder = builder.get_object("action_btn_0").expect("Couldn't get action_btn_0");
