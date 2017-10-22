@@ -166,6 +166,8 @@ fn show_quickmenu(
         drinks.extend(drinks_set.into_iter());
 
 
+        quickmenu.quickmenu.set_transient_for(&GLOBAL_USERWINDOW.lock().unwrap().application_window);
+
         quickmenu.quickmenu.show_all();
 
 
@@ -200,11 +202,9 @@ fn main() {
         "Initialization failed...",
     );
 
-    let window = gtk::ApplicationWindow::new(&application); //TODO: is not kept open
 
 
     {
-        //let app2 = application.clone();
 
         application.connect_startup(move |app| {
             if gtk::init().is_err() {
@@ -229,7 +229,6 @@ fn main() {
 
 
             {
-                let app = app.clone();
                 {
                     let notification_1 = gio::Notification::new("my notification title 1");
 
