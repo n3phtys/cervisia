@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use gtk;
 
 
@@ -13,9 +15,12 @@ use gtk::{AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkAppli
 use std::env;
 use std;
 
+use input_handling::user_btn_pressed;
+use input_handling::quickmenu_item_btn_pressed;
+
 
 use cervisia_utilities::current_time;
-use redraw_users;
+use input_handling::search_entry_text_changed;
 
 pub const NUMBER_OF_USERS_PER_PAGE: u8 = 40;
 
@@ -42,20 +47,29 @@ pub fn build_quickmenu() -> QuickmenuGtkComponents {
         window.hide();
     });
 
+    let mut item_btns: [gtk::Button; 4 as usize] = [
+        builder.get_object("item_btn_0")
+            .expect("Couldn't get item_btn_0"),
+        builder.get_object("item_btn_1")
+            .expect("Couldn't get item_btn_1"),
+        builder.get_object("item_btn_2")
+            .expect("Couldn't get item_btn_2"),
+        builder.get_object("item_btn_3")
+            .expect("Couldn't get item_btn_3"),
+    ];
+
+    for i in 0..4 {
+        let k = i;
+        item_btns[i].connect_clicked(move |_| {
+            quickmenu_item_btn_pressed(k);
+        });
+    }
+
 
     return QuickmenuGtkComponents {
         quickmenu: builder.get_object("quickmenu")
             .expect("Couldn't get quickmenu"),
-        item_btn: [
-            builder.get_object("item_btn_0")
-                .expect("Couldn't get item_btn_0"),
-            builder.get_object("item_btn_1")
-                .expect("Couldn't get item_btn_1"),
-            builder.get_object("item_btn_2")
-                .expect("Couldn't get item_btn_2"),
-            builder.get_object("item_btn_3")
-                .expect("Couldn't get item_btn_3"),
-        ],
+        item_btn: item_btns,
         other_drinks: builder.get_object("andere_getraenke")
             .expect("Couldn't get andere_getraenke"),
         free_be: builder.get_object("ausgeben")
@@ -149,6 +163,10 @@ return placeholder;
         let id = format!("user_btn_{}", i);
         let errormsg = format!("Couldn't get user_btn_{}", i);
         user_btns[i] = builder.get_object(&id).expect(&errormsg);
+
+        user_btns[i].connect_clicked(move |_| {
+            user_btn_pressed(i);
+        });
     }
 
     let action_box_bar: gtk::ButtonBox = builder.get_object("action_bar")
@@ -178,7 +196,7 @@ return placeholder;
 
     {
         search_entry.connect_search_changed(move |_| {
-            redraw_users();
+            search_entry_text_changed();
         });
     }
 

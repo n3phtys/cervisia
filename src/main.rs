@@ -1,3 +1,6 @@
+#![allow(unused_imports)]
+
+
 extern crate gio;
 extern crate glib;
 extern crate gtk;
@@ -53,7 +56,6 @@ use std::ops::*;
 use std::ops::DerefMut;
 use std::rc::Rc;
 use suffix::KDTree;
-use std::sync::Mutex;
 use std::sync::mpsc::channel;
 use std::thread;
 use std::sync::mpsc::{Sender, Receiver};
@@ -64,6 +66,12 @@ use static_variables::*;
 
 
 use chrono::prelude::*;
+
+use static_variables::GLOBAL_BACKEND;
+use static_variables::GLOBAL_USERWINDOW;
+use static_variables::ADD_OR_UNDO_PURCHASE;
+use static_variables::USERS_ON_SCREEN;
+use static_variables::USER_SELECTED;
 
 // make moving clones into closures more convenient
 macro_rules! clone {
@@ -83,184 +91,6 @@ macro_rules! clone {
     );
 }
 
-//TODO: remove old connect handlers before setting new ones, if not will lead to multi click handling
-//TODO: both in user buttons and drink buttons
-//TODO: alternative: build code handling into builder-functions, and never set new connect signals - instead store user and item id globally and go with those values
-
-
-
-
-use glade_builders::QuickmenuGtkComponents;
-use glade_builders::UserWindowGtkComponents;
-use glade_builders::build_from_glade;
-use glade_builders::build_quickmenu;
-
-lazy_static! {
-    static ref GLOBAL_BACKEND:
-        Mutex<rustix_backend::RustixBackend<persistencer::TransientPersister>> =
-        Mutex::new(blrustix::build_transient_backend_with(
-            NUMBER_OF_USERS_PER_PAGE , NUMBER_OF_USERS_PER_PAGE
-            ));
-    static ref GLOBAL_QUICKMENU: Mutex<QuickmenuGtkComponents> = Mutex::new(build_quickmenu());
-    static ref GLOBAL_USERWINDOW: Mutex<UserWindowGtkComponents> = Mutex::new(build_from_glade());
-
-    static ref ADD_OR_UNDO_PURCHASE : Mutex<(Sender<Purchase>, Sender<Purchase>)> = Mutex::new(build_purchase_debouncer());
-
-}
-
-fn redraw_users() {
-
-    let searchterm: &str = {
-        let userwindow = GLOBAL_USERWINDOW.lock().unwrap();
-        &userwindow.search_bar.get_buffer().get_text()
-    };
-
-
-    //if empty input, show saufbubbies and no action btns
-    //if not, show searched subset of users and subset of action btns
-
-    render_user_buttons(searchterm);
-
-
-}
-
-fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
-    let (add_tx, add_rx): (Sender<Purchase>, Receiver<Purchase>) = channel();
-
-    let (undo_tx, undo_rx): (Sender<Purchase>, Receiver<Purchase>) = channel();
-
-    {
-        thread::spawn(move || {
-
-            let added_purchases = add_rx;
-            let undone_purchases = undo_rx;
-
-            //listen to adds, listen to undoes, process results, and sleep for the next cycle
-
-            let mut queue_of_purchases: std::vec::Vec<Purchase> = vec!();
-
-            loop {
-                //println!("debouncer loop begins");
-
-                for add in added_purchases.try_iter() {
-                    match add {
-                        Purchase::SimplePurchase {
-                            timestamp_seconds,
-                            item_id,
-                            consumer_id,
-                        } => {
-                            queue_of_purchases.push(Purchase::SimplePurchase {
-                                timestamp_seconds,
-                                item_id,
-                                consumer_id,
-                            });
-                        },
-                    }
-                }
-
-                for undo in undone_purchases.try_iter() {
-                    match undo {
-                        Purchase::SimplePurchase {
-                            timestamp_seconds,
-                            item_id,
-                            consumer_id,
-                        } => {
-                            let ts: u32 = timestamp_seconds;
-                            let iid: u32 = item_id;
-                            let cid: u32 = consumer_id;
-
-                            queue_of_purchases.retain(|element| match element {
-                                &Purchase::SimplePurchase {
-                                    ref timestamp_seconds,
-                                    ref item_id,
-                                    ref consumer_id,
-                                } => timestamp_seconds != &ts || item_id != &iid || consumer_id != &cid,
-                                _ => true,
-                            });
-                        },
-                    }
-                }
-
-
-                let timestamp: u32 = time::get_time().sec as u32;;
-
-
-                queue_of_purchases.retain(|element: &Purchase| match element {
-                    &Purchase::SimplePurchase {
-                        ref timestamp_seconds,
-                        ref item_id,
-                        ref consumer_id,
-                    } => {
-                        if (*timestamp_seconds >= timestamp) {
-                             return true;
-                        } else {
-                            println!("Purchase Debounce finished: user {:?}, item {:?}, timestamp {:?}", consumer_id, item_id, timestamp_seconds);
-                            finalize_purchase(*consumer_id, *item_id, *timestamp_seconds);
-                            return false;
-                        }
-                    },
-                    _ => true,
-                });
-
-
-
-                thread::sleep(std::time::Duration::from_millis(100)); //TODO: set to something like 10 seconds to deal with notification
-            }
-
-
-
-
-            println!("thread finished");
-        });
-    }
-
-
-    return (add_tx, undo_tx);
-
-}
-
-
-fn enqueue_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
-    //move purchase to
-    ADD_OR_UNDO_PURCHASE.lock().unwrap().0.send(Purchase::SimplePurchase {
-        consumer_id: user_id,
-        item_id: item_id,
-        timestamp_seconds: epoch_seconds,
-    });
-}
-
-fn finalize_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
-    //set on_idle task to call bl and write to database, followed by all the other interactions
-
-    {
-        let exec = move || {
-
-            println!("exec started");
-
-            let bl: &mut RustixBackend<
-                TransientPersister,
-            > = &mut GLOBAL_BACKEND.lock().expect(
-                "Beerlist variable was not available anymore",
-            );
-
-
-            let result = bl.purchase(user_id, item_id, epoch_seconds);
-            let item_lbl = &bl.datastore.items[&item_id].name;
-            let user_lbl = &bl.datastore.users[&user_id].username;
-            render_last_purchase(user_lbl, item_lbl);
-
-            println!("render_last_purchase happened");
-
-            gtk::Continue(false)
-        };
-
-        // executes the closure on next chance:
-        glib::source::idle_add(exec);
-
-        println!("exec in gtk queue");
-    }
-
-}
 
 
 
@@ -359,111 +189,7 @@ fn build_ui(application: &gtk::Application) {
     //window.show_all();
 }
 
-fn render_last_purchase(user: &str, drink: &str) {
-    //should be the same as used in the purchase struct
-    let timelabel = Local::now().format("%Y-%m-%d %H:%M:%S");
 
-    GLOBAL_USERWINDOW.lock()
-                     .expect("Global UserWindow variable does not exist anymore")
-                     .log_btn
-                     .set_label(&format!(
-        "User {} bought 1 {} at {}",
-        user,
-        drink,
-        timelabel
-    ));
-}
-
-fn render_user_buttons(searchterm: &str) {
-    let userwindow: &mut UserWindowGtkComponents = &mut GLOBAL_USERWINDOW.lock().expect(
-        "Global UserWindow variable does not exist anymore",
-    );
-
-    //take n = 40 top users
-    //TODO: check searchterm if non-empty and take 40 users matching the term from all users
-
-    let mut top_users: Vec<u32> = Vec::new();
-
-    if (searchterm.is_empty()) {
-        userwindow.action_bar.set_visible(false);
-
-
-
-        {
-            let bl = GLOBAL_BACKEND.lock().unwrap();
-            for element in &bl.datastore.top_users {
-                top_users.push(*element);
-            }
-        }
-
-
-    } else {
-        userwindow.action_bar.set_visible(true);
-
-        //match via suffix tree and take at most NUMBER_OF_USERS_PER_PAGE
-
-        {
-            let bl = GLOBAL_BACKEND.lock().unwrap();
-
-            for element in bl.datastore.users_suffix_tree.search(searchterm).iter().take(NUMBER_OF_USERS_PER_PAGE as usize) {
-                top_users.push(element.id);
-            }
-        }
-
-    }
-
-
-
-    //println!("Before method: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
-
-
-
-
-
-    {
-        // println!("Before loop: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
-
-
-        for i in 0..NUMBER_OF_USERS_PER_PAGE as usize {
-            if i < top_users.len() {
-                let user_id: u32 = top_users[i];
-
-                //      println!("Line {}", i);
-
-                {
-                    //        println!("{} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
-                    let bl2: &RustixBackend<TransientPersister> = &GLOBAL_BACKEND.lock().unwrap();
-                    //set user name as button label
-                    userwindow.user_btn[i].set_label(&bl2.datastore.users[&user_id].username);
-                }
-
-                //        println!("Middle of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
-
-                {
-                    //TODO: move this instead to a global variable for user_id, and a global function
-                    userwindow.user_btn[i].connect_clicked(move |_| {
-                        //              println!("Pressed User ID {}", user_id);
-                        let qm = &mut GLOBAL_QUICKMENU.lock().unwrap();
-                        let bl = &GLOBAL_BACKEND.lock().unwrap();
-                        show_quickmenu(qm, user_id, bl);
-                    });
-                }
-
-
-                //            println!("End of loop body: {} weak references and {} strong ones", Rc::weak_count(&backend), Rc::strong_count(&backend));
-
-                userwindow.user_btn[i].set_visible(true);
-            } else {
-                //if top users < 40, set buttons to invisible
-                userwindow.user_btn[i].set_visible(false);
-            }
-        }
-    }
-
-    //TODO: deal with action bar, etc.
-
-    //set connect_clicked to call show_quickmenu with user id
-}
 
 
 
@@ -480,6 +206,11 @@ fn show_quickmenu(
         println!("Whole Backend on show_quickmenu = {:?}", backend);
 
         let drinks_set: &HashSet<u32> = &backend.datastore.top_drinks_per_user[&user_id];
+
+
+        let target_list: &mut Vec<u32> = &mut ITEMS_ON_SCREEN.lock().unwrap();
+        target_list.clear();
+
 
         let mut drinks: Vec<u32> = Vec::new();
 
@@ -501,28 +232,8 @@ fn show_quickmenu(
                 }
                 {
                     let item_id: u32 = drinks[idx];
+                    target_list.push(item_id);
 
-
-                    quickmenu.item_btn[idx].connect_clicked(move |_| {
-                        let quickmenu = GLOBAL_QUICKMENU.lock()
-                                        .expect("Global Window no longer available");
-
-                        quickmenu.close_btn.clicked();
-
-
-                        let epoch_seconds = time::get_time().sec as u32 + 0; //TODO implement delay here in seconds
-                        {
-
-                            println!(
-                                "buying {} in quickmenu at epoch seconds {}",
-                                idx,
-                                epoch_seconds
-                            );
-                            enqueue_purchase(user_id, item_id, epoch_seconds);
-
-
-                        }
-                    });
                 }
                 {
                     quickmenu.item_btn[idx].set_visible(true);
@@ -553,7 +264,7 @@ fn main() {
 
             let searchterm = "";
             //println!("Before method call: {} weak references and {} strong ones", Rc::weak_count(&quickmenu), Rc::strong_count(&quickmenu));
-            render_user_buttons(&searchterm);
+            input_handling::search_entry_text_changed();
 
             //DELETE THIS: show_quickmenu(&mut quickmenu, 0, backend);
 
