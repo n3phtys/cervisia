@@ -53,7 +53,7 @@ pub fn quickmenu_item_btn_pressed(index: usize) {
 
 
 
-    let epoch_seconds = time::get_time().sec as u32 + 0; //TODO implement delay here in seconds
+    let epoch_seconds: i64 = Local::now().timestamp();
     {
         println!(
             "buying {} in quickmenu at epoch seconds {}",

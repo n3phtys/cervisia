@@ -69,65 +69,76 @@ pub fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
                 for add in added_purchases.try_iter() {
                     match add {
                         Purchase::SimplePurchase {
-                            timestamp_seconds,
+                            unique_id,
+                            timestamp_epoch_millis,
                             item_id,
                             consumer_id,
                         } => {
                             queue_of_purchases.push(Purchase::SimplePurchase {
-                                timestamp_seconds,
+                                unique_id,
+                                timestamp_epoch_millis,
                                 item_id,
                                 consumer_id,
                             });
                         }
+                        Purchase::UndoPurchase { ref unique_id } => unimplemented!(),
                     }
                 }
 
                 for undo in undone_purchases.try_iter() {
                     match undo {
                         Purchase::SimplePurchase {
-                            timestamp_seconds,
+                            unique_id,
+                            timestamp_epoch_millis,
                             item_id,
                             consumer_id,
                         } => {
-                            let ts: u32 = timestamp_seconds;
+                            let ts: i64 = timestamp_epoch_millis;
                             let iid: u32 = item_id;
                             let cid: u32 = consumer_id;
 
                             queue_of_purchases.retain(|element| match element {
                                 &Purchase::SimplePurchase {
-                                    ref timestamp_seconds,
+                                    ref unique_id,
+                                    ref timestamp_epoch_millis,
                                     ref item_id,
                                     ref consumer_id,
                                 } => {
-                                    timestamp_seconds != &ts || item_id != &iid
+                                    timestamp_epoch_millis != &ts || item_id != &iid
                                         || consumer_id != &cid
                                 }
+                                &Purchase::UndoPurchase { ref unique_id } => unimplemented!(),
                             });
                         }
+                        Purchase::UndoPurchase { ref unique_id } => unimplemented!(),
                     }
                 }
 
 
-                let timestamp: u32 = time::get_time().sec as u32;
+                let timestamp = Local::now().timestamp();
 
 
                 queue_of_purchases.retain(|element: &Purchase| match element {
                     &Purchase::SimplePurchase {
-                        ref timestamp_seconds,
+                        ref unique_id,
+                        ref timestamp_epoch_millis,
                         ref item_id,
                         ref consumer_id,
-                    } => if *timestamp_seconds >= timestamp {
+                    } => if *timestamp_epoch_millis >= timestamp {
                         return true;
                     } else {
                         println!(
                             "Purchase Debounce finished: user {:?}, item {:?}, timestamp {:?}",
                             consumer_id,
                             item_id,
-                            timestamp_seconds
+                            timestamp_epoch_millis
                         );
-                        finalize_purchase(*consumer_id, *item_id, *timestamp_seconds);
+                        finalize_purchase(*consumer_id, *item_id, *timestamp_epoch_millis);
                         return false;
                     },
+                    &Purchase::UndoPurchase { ref unique_id } => {
+                        return true;
+                    }
                 });
 
 
@@ -142,19 +153,20 @@ pub fn build_purchase_debouncer() -> (Sender<Purchase>, Sender<Purchase>) {
 }
 
 
-pub fn enqueue_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
+pub fn enqueue_purchase(user_id: u32, item_id: u32, epoch_millis: i64) {
     //move purchase to
     let _ = ADD_OR_UNDO_PURCHASE.lock()
                                 .unwrap()
                                 .0
                                 .send(Purchase::SimplePurchase {
+        unique_id: 0u64,
         consumer_id: user_id,
         item_id: item_id,
-        timestamp_seconds: epoch_seconds,
+        timestamp_epoch_millis: epoch_millis,
     });
 }
 
-pub fn finalize_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
+pub fn finalize_purchase(user_id: u32, item_id: u32, epoch_millis: i64) {
     //set on_idle task to call bl and write to database, followed by all the other interactions
 
     {
@@ -166,7 +178,7 @@ pub fn finalize_purchase(user_id: u32, item_id: u32, epoch_seconds: u32) {
             );
 
 
-            let _ = bl.purchase(user_id, item_id, epoch_seconds); //TODO: use result
+            let _ = bl.purchase(user_id, item_id, epoch_millis); //TODO: use result
             let item_lbl = &bl.datastore.items[&item_id].name;
             let user_lbl = &bl.datastore.users[&user_id].username;
             render_last_purchase(user_lbl, item_lbl);

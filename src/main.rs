@@ -104,7 +104,7 @@ fn setup_mock_data() {
         bl.create_user("Vall".to_string());
         bl.create_user("rad(i)".to_string());
 
-        for i in 0..99 {
+        for i in 0..250 {
             bl.create_user("GenUser #".to_string() + &i.to_string());
         }
 
@@ -123,7 +123,7 @@ fn setup_mock_data() {
         let mut rng: StdRng = SeedableRng::from_seed(seed);
 
 
-        let mut timestamp_counter = 12345678u32;
+        let mut timestamp_counter = 12345678i64;
         bl.purchase(0, 2, timestamp_counter);
 
         //random purchases for the existing users
