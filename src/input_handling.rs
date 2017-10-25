@@ -103,7 +103,13 @@ pub fn search_entry_text_changed() {
 
 
 
+pub fn purchase_selection_changed() {
+    unimplemented!()
+}
 
+pub fn purchase_undo_handler() {
+    unimplemented!()
+}
 
 
 
