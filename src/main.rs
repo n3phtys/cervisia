@@ -67,7 +67,6 @@ use suffix::KDTree;
 
 use chrono::prelude::*;
 
-use static_variables::ADD_OR_UNDO_PURCHASE;
 use static_variables::GLOBAL_BACKEND;
 use static_variables::GLOBAL_USERWINDOW;
 use static_variables::USERS_ON_SCREEN;

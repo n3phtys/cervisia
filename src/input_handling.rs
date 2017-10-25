@@ -7,7 +7,6 @@ use enqueue_purchase;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::UserWindowGtkComponents;
 use show_quickmenu;
-use static_variables::ADD_OR_UNDO_PURCHASE;
 use static_variables::GLOBAL_BACKEND;
 use static_variables::GLOBAL_QUICKMENU;
 use static_variables::GLOBAL_USERWINDOW;

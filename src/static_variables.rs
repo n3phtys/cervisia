@@ -3,7 +3,6 @@
 use blrustix::*;
 use blrustix::build_transient_backend_with;
 use blrustix::datastore::Purchase;
-use build_purchase_debouncer;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::QuickmenuGtkComponents;
 use glade_builders::UserWindowGtkComponents;
@@ -26,10 +25,6 @@ lazy_static! {
     pub static ref GLOBAL_USERWINDOW
         : Mutex<UserWindowGtkComponents>
         = Mutex::new(build_from_glade());
-
-    pub static ref ADD_OR_UNDO_PURCHASE
-        : Mutex<(Sender<Purchase>, Sender<Purchase>)>
-        = Mutex::new(build_purchase_debouncer());
 
 
     pub static ref USER_SELECTED : Mutex<Option<u32>> = Mutex::new(None);
