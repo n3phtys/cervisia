@@ -18,11 +18,11 @@ use gtk::{AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkAppli
 use std::env;
 
 
-extern crate blrustix;
 #[macro_use]
 extern crate closet;
+extern crate rustix_bl;
 
-extern crate suffix;
+extern crate suffix_rs;
 
 #[macro_use]
 extern crate lazy_static;
@@ -38,18 +38,18 @@ pub mod static_variables;
 pub mod cervisia_utilities;
 
 
-use blrustix::*;
-use blrustix::datastore::*;
-use blrustix::datastore::Purchase::SimplePurchase;
-use blrustix::persistencer::*;
-use blrustix::rustix_backend;
-use blrustix::rustix_backend::*;
 use cervisia_utilities::*;
 use glade_builders::*;
 use gtk::Adjustment;
 use gtk::ScrolledWindow;
 use input_handling::*;
 use rand::{Rng, SeedableRng, StdRng};
+use rustix_bl::*;
+use rustix_bl::datastore::*;
+use rustix_bl::datastore::Purchase::SimplePurchase;
+use rustix_bl::persistencer::*;
+use rustix_bl::rustix_backend;
+use rustix_bl::rustix_backend::*;
 use static_variables::*;
 use std::borrow::*;
 use std::cell::*;
@@ -62,7 +62,7 @@ use std::rc::Rc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::mpsc::channel;
 use std::thread;
-use suffix::KDTree;
+use suffix_rs::KDTree;
 
 
 use chrono::prelude::*;

@@ -1,11 +1,32 @@
 [package]
 name = "cervisia"
-version = "6.0.0"
+version = "0.0.1"
 authors = ["nephtys <christopher.kaag@gmail.com>"]
 
+
+
+# A short blurb about the package. This is not rendered in any format when
+# uploaded to crates.io (aka this is not markdown).
+description = "gtk-rs based application for managing avh beer supply"
+
+# These URLs point to more information about the repository. These are
+# intended to be webviews of the relevant data, not necessarily compatible
+# with VCS tools and the like.
+repository = "https://github.com/n3phtys/cervisia"
+
+
+# This is a string description of the license for this package. Currently
+# crates.io will validate the license provided against a whitelist of known
+# license identifiers from http://spdx.org/licenses/. Multiple licenses can be
+# separated with a `/`.
+license = "MIT"
+
+
+
+
 [dependencies]
-blrustix = { git = "https://github.com/n3phtys/rustix-bl" }
-suffix = { git = "https://github.com/n3phtys/suffix-rs" }
+rustix-bl = "0.3"
+suffix-rs = "0.1"
 closet = "0.2.2"
 glib = "0.3.1"
 rand = "0.3"

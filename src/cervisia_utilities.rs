@@ -1,10 +1,10 @@
 #![allow(unused_imports)]
 
-use blrustix::persistencer::TransientPersister;
-use blrustix::rustix_backend::RustixBackend;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::UserWindowGtkComponents;
 use input_handling::render_last_purchase;
+use rustix_bl::persistencer::TransientPersister;
+use rustix_bl::rustix_backend::RustixBackend;
 use show_quickmenu;
 use static_variables::GLOBAL_BACKEND;
 use static_variables::GLOBAL_QUICKMENU;
@@ -13,7 +13,7 @@ use static_variables::ITEMS_ON_SCREEN;
 use static_variables::USERS_ON_SCREEN;
 use static_variables::USER_SELECTED;
 use std;
-use suffix::KDTree;
+use suffix_rs::KDTree;
 use time;
 
 use glib;
@@ -22,12 +22,12 @@ use gtk::{CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewCol
           WindowPosition, WindowType};
 use gtk::prelude::*;
 
-use blrustix::*;
-use blrustix::datastore::*;
-use blrustix::datastore::Purchase::SimplePurchase;
-use blrustix::persistencer::*;
-use blrustix::rustix_backend;
-use blrustix::rustix_backend::*;
+use rustix_bl::*;
+use rustix_bl::datastore::*;
+use rustix_bl::datastore::Purchase::SimplePurchase;
+use rustix_bl::persistencer::*;
+use rustix_bl::rustix_backend;
+use rustix_bl::rustix_backend::*;
 
 use chrono::*;
 use chrono::prelude::*;

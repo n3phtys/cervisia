@@ -1,8 +1,5 @@
 #![allow(unused_imports)]
 
-use blrustix::*;
-use blrustix::build_transient_backend_with;
-use blrustix::datastore::Purchase;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::QuickmenuGtkComponents;
 use glade_builders::UserWindowGtkComponents;
@@ -10,6 +7,9 @@ use glade_builders::build_from_glade;
 use glade_builders::build_quickmenu;
 use persistencer::TransientPersister;
 use rustix_backend::RustixBackend;
+use rustix_bl::*;
+use rustix_bl::build_transient_backend_with;
+use rustix_bl::datastore::Purchase;
 use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender};
 
