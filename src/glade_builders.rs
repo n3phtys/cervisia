@@ -198,6 +198,37 @@ return placeholder;
         });
     }
 
+
+    let close_log: gtk::Button = builder.get_object("close_log_btn")
+                                        .expect("Couldn't get close_log_btn");
+    let undo_log: gtk::Button = builder.get_object("undo_purchase_btn")
+                                       .expect("Couldn't get undo_purchase_btn");
+    let log_upper_label: gtk::Label = builder.get_object("log_upper_label")
+                                             .expect("Couldn't get log_upper_label");
+    let log_lower_label: gtk::Label = builder.get_object("log_lower_label")
+                                             .expect("Couldn't get log_lower_label");
+    let purchase_log_listview: gtk::TreeView = builder.get_object("purchase_log_listview")
+                                                      .expect("Couldn't get purchase_log_listview");
+    let purchase_liststore: gtk::ListStore = builder.get_object("purchase_liststore")
+                                                    .expect("Couldn't get purchase_liststore");
+    let purchase_log: gtk::Dialog = builder.get_object("purchase_log")
+                                           .expect("Couldn't get purchase_log");
+
+
+    {
+        let purchase_log = purchase_log.clone();
+        close_log.connect_clicked(move |_| {
+            purchase_log.hide();
+        });
+    }
+
+    {
+        let purchase_log = purchase_log.clone();
+        purchase_log_btn.connect_clicked(move |_| {
+            purchase_log.show();
+        });
+    }
+
     return UserWindowGtkComponents {
         application_window: builder.get_object("user_selection_window")
                                    .expect("Couldn't get user_selection_window"),
@@ -207,6 +238,13 @@ return placeholder;
         clock_label: clock_time_label,
         log_btn: purchase_log_btn,
         search_bar: search_entry,
+        purchase_log: purchase_log,
+        purchase_log_listview: purchase_log_listview,
+        log_upper_label: log_upper_label,
+        log_lower_label: log_lower_label,
+        undo_purchase_btn: undo_log,
+        close_log_btn: close_log,
+        purchase_liststore: purchase_liststore,
     };
 }
 
@@ -219,6 +257,13 @@ pub struct UserWindowGtkComponents {
     pub clock_label: gtk::Label,
     pub log_btn: gtk::Button,
     pub search_bar: gtk::SearchEntry,
+    pub purchase_log: gtk::Dialog,
+    pub purchase_log_listview: gtk::TreeView,
+    pub log_upper_label: gtk::Label,
+    pub log_lower_label: gtk::Label,
+    pub undo_purchase_btn: gtk::Button,
+    pub close_log_btn: gtk::Button,
+    pub purchase_liststore: gtk::ListStore,
 }
 
 
