@@ -4,18 +4,24 @@
 use enqueue_purchase;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::UserWindowGtkComponents;
+use gtk::TreeIter;
+use rustix_bl::datastore::*;
 use rustix_bl::persistencer::TransientPersister;
 use rustix_bl::rustix_backend::RustixBackend;
+use rustix_bl::rustix_backend::WriteBackend;
 use show_quickmenu;
 use static_variables::GLOBAL_BACKEND;
 use static_variables::GLOBAL_QUICKMENU;
 use static_variables::GLOBAL_USERWINDOW;
 use static_variables::ITEMS_ON_SCREEN;
+use static_variables::PURCHASE_SELECTED;
+use static_variables::SIZE_OF_PURCHASE_LOG;
 use static_variables::USERS_ON_SCREEN;
 use static_variables::USER_SELECTED;
-use static_variables::PURCHASE_SELECTED;
 use suffix_rs::KDTree;
 use time;
+
+use rustix_bl::datastore::Purchaseable;
 
 use chrono::*;
 use chrono::prelude::*;
@@ -103,20 +109,138 @@ pub fn search_entry_text_changed() {
 }
 
 
-//TODO: implement, but potentially with password check in middle time interval
 pub fn purchase_undo_handler() {
-    unimplemented!()
+    let opt: &Option<u64> = &*PURCHASE_SELECTED.lock().unwrap();
+    if opt.is_some() {
+        let id = opt.clone().unwrap();
+
+        let bl = &mut GLOBAL_BACKEND.lock().unwrap();
+
+        let pur: Purchase = bl.datastore.get_purchase(id).unwrap();
+
+        //TODO: implement password check in middle time interval
+
+
+        //after undone, reselect in purchase log and rerender purchase label
+
+        let was_the_last = bl.undo_purchase(id);
+
+        //remove entry from purchase log
+
+        let model: &mut ListStore = &mut GLOBAL_USERWINDOW.lock().unwrap().purchase_liststore;
+        let size = model.iter_n_children(None);
+
+
+        let iter: TreeIter = model.get_iter_first().unwrap();
+
+        for n in 0..size {
+            println!("iteration with n = {}", n);
+            let x: u64 = model.get_value(&iter, 3).get::<u64>().unwrap();
+            if x != id {
+                model.iter_next(&iter);
+            } else {
+                //found right iter
+                //get previous one if one exists
+
+                println!("iter_nth_child with n = {}", n - 1);
+                //TODO: should fail-safe to newer one if no older one exists
+                let prev_opt = if n - 1 >= 0 { model.iter_nth_child(None, n - 1) } else {None};
+                println!("Reaching this first point 0");
+
+                println!("Reaching this first point A");
+
+                //set selection to prev
+
+                println!("Reaching this first point B");
+                if prev_opt.is_some() {
+                    println!("Reaching this first point C");
+                    let prev = prev_opt.unwrap();
+                    println!("Reaching this first point D");
+                    //TODO: breaks down (deadlock!!!) maybe selection is broken, or select_iter is
+                    GLOBAL_USERWINDOW.lock().unwrap().purchase_log_listview.get_selection().select_iter(&prev);
+                    println!("Reaching this first point E");
+                } else {
+                    println!("Reaching this first point F");
+                    //TODO: breaks down (deadlock!!!) maybe selection is broken or unselect_all is
+                    GLOBAL_USERWINDOW.lock().unwrap().purchase_log_listview.get_selection().unselect_all();
+                    println!("Reaching this first point G");
+                }
+
+                println!("Reaching this point too");
+
+
+                //delete element
+                model.remove(&iter);
+
+
+                println!("Reaching this last point");
+            }
+        }
+
+
+
+
+
+        if was_the_last {
+            //copy new last item from purchase log into purchase label as string (if it was the last)
+            refresh_purchase_label_from_newest_log_element();
+        }
+    }
 }
-//TODO: after undone, remove reselect in purchase log and rerender purchase label
+
+pub fn refresh_purchase_label_from_newest_log_element() {
+    //reselect new last item from purchase log
+
+    let log_btn: &mut Button = &mut GLOBAL_USERWINDOW.lock().unwrap().log_btn;
+
+    let model: &mut ListStore = &mut GLOBAL_USERWINDOW.lock().unwrap().purchase_liststore;
+
+    let size = model.iter_n_children(None);
+    println!("iter_nth_child with size = {}", size - 1);
+    let last_opt = if size - 1 >= 0 { model.iter_nth_child(None, size - 1) } else {None};
+
+
+    log_btn.set_label(
+        &&(if last_opt.is_some() {
+            let last = last_opt.unwrap();
+
+            let user = model.get_value(&last, 1).get::<String>().unwrap();
+            let drink = model.get_value(&last, 2).get::<String>().unwrap();
+            let secs = model.get_value(&last, 0).get::<i64>().unwrap();
+            let timelabel = Local.timestamp(secs, 0).format("%Y-%m-%d %H:%M:%S");
+
+            let x = format!("User {} bought 1 {} at {}", user, drink, &timelabel).to_string();
+
+            x
+        } else {
+            "No purchases since last bill".to_string()
+        }),
+    );
+}
 
 
 pub fn handle_purchase_select(id: u64) {
     let selected: &mut Option<u64> = &mut *PURCHASE_SELECTED.lock().unwrap();
     *selected = Some(id);
 
-    //TODO: set upper label
 
-    //TODO: set lower label
+    let bl = GLOBAL_BACKEND.lock().unwrap();
+    match bl.datastore.get_purchase(id) {
+        Some(Purchase::SimplePurchase {
+            unique_id,
+            timestamp_epoch_millis,
+            item_id,
+            consumer_id,
+        }) => {
+            let w = &mut GLOBAL_USERWINDOW.lock().expect(
+                "Global UserWindow variable does not exist anymore",
+            );
+
+            w.log_upper_label.set_text(&bl.datastore.users[&consumer_id].username);
+            w.log_lower_label.set_text(&bl.datastore.items[&item_id].name);
+        }
+        _ => {}
+    }
 }
 
 
@@ -148,16 +272,20 @@ pub fn render_last_purchase(user: &str, drink: &str, ts: i64, id: u64) {
 
         model.insert_with_values(None, &[0, 1, 2, 3], &[epochmillis, item_lbl, user_lbl, id]);
 
-        //TODO: remove oldest one from model if n > 200, that is position = 0
+        //remove oldest one from model if n > 200, that is position = 0
         let position0opt = model.get_iter_first();
-        //TODO: get size
-        let size = 199;
+        //get size
+        let size = model.iter_n_children(None);
+
+        println!("Found {} elements in model", size);
 
         match position0opt {
-            Some(treeiter) => if size > 200 {
+            Some(treeiter) => if size > SIZE_OF_PURCHASE_LOG as i32 {
                 model.remove(&treeiter);
             },
-            None => {}
+            None => {
+                panic!("No first position element found");
+            }
         }
     }
 }
@@ -172,7 +300,7 @@ fn render_user_buttons(searchterm: &str) {
     );
 
     //take n = 40 top users
-    //TODO: check searchterm if non-empty and take 40 users matching the term from all users
+    //check searchterm if non-empty and take 40 users matching the term from all users
 
     let mut top_users: Vec<u32> = Vec::new();
 

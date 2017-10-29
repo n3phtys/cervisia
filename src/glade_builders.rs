@@ -15,14 +15,14 @@ use gtk::{AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkAppli
 use std;
 use std::env;
 
+use input_handling::purchase_undo_handler;
 use input_handling::quickmenu_item_btn_pressed;
 use input_handling::user_btn_pressed;
-use input_handling::purchase_undo_handler;
-
 
 use cervisia_utilities::current_time;
-use static_variables::PURCHASE_SELECTED;
+use input_handling::handle_purchase_select;
 use input_handling::search_entry_text_changed;
+use static_variables::PURCHASE_SELECTED;
 
 pub const NUMBER_OF_USERS_PER_PAGE: u8 = 40;
 
@@ -213,6 +213,12 @@ return placeholder;
                                                       .expect("Couldn't get purchase_log_listview");
     let purchase_liststore: gtk::ListStore = builder.get_object("purchase_liststore")
                                                     .expect("Couldn't get purchase_liststore");
+
+
+    {
+        purchase_liststore.clear();
+    }
+
     let purchase_log: gtk::Dialog = builder.get_object("purchase_log")
                                            .expect("Couldn't get purchase_log");
 
@@ -241,11 +247,15 @@ return placeholder;
     //connect selection handling with global variable
     {
         purchase_log_listview.connect_cursor_changed(move |tree_view| {
+            println!("selection gotten");
             let selection = tree_view.get_selection();
+            println!("selection tested");
             if let Some((model, iter)) = selection.get_selected() {
-                let id : u64 = model.get_value(&iter, 3).get::<u64>()
-                    .expect("Couldn't get purchase id value");
-
+                println!("selection exists");
+                let id: u64 = model.get_value(&iter, 3)
+                                   .get::<u64>()
+                                   .expect("Couldn't get purchase id value");
+                handle_purchase_select(id);
             }
             let idsel: Option<u64> = PURCHASE_SELECTED.lock().unwrap().clone();
             println!("Purchase Selected #1: {:?}", idsel);
