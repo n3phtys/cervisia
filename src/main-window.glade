@@ -692,7 +692,32 @@
       <placeholder/>
     </child>
   </object>
-  <object class="GtkListStore" id="purchase_liststore"/>
+  <object class="GtkListStore" id="purchase_liststore">
+    <columns>
+      <!-- column-name timestamp -->
+      <column type="gint64"/>
+      <!-- column-name item -->
+      <column type="gchararray"/>
+      <!-- column-name user -->
+      <column type="gchararray"/>
+      <!-- column-name id -->
+      <column type="guint64"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0">12345</col>
+        <col id="1" translatable="yes">Beer</col>
+        <col id="2" translatable="yes">Lara</col>
+        <col id="3">0</col>
+      </row>
+      <row>
+        <col id="0">12346</col>
+        <col id="1" translatable="yes">Cola</col>
+        <col id="2" translatable="yes">Chuck</col>
+        <col id="3">1</col>
+      </row>
+    </data>
+  </object>
   <object class="GtkDialog" id="purchase_log">
     <property name="width_request">920</property>
     <property name="height_request">540</property>
@@ -745,6 +770,59 @@
                 <property name="model">purchase_liststore</property>
                 <child internal-child="selection">
                   <object class="GtkTreeSelection"/>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="timestamp">
+                    <property name="title" translatable="yes">EpochMillis</property>
+                    <property name="clickable">True</property>
+                    <property name="reorderable">True</property>
+                    <property name="sort_indicator">True</property>
+                    <property name="sort_order">descending</property>
+                    <property name="sort_column_id">0</property>
+                    <child>
+                      <object class="GtkCellRendererText"/>
+                      <attributes>
+                        <attribute name="text">0</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="item">
+                    <property name="title" translatable="yes">Item</property>
+                    <property name="clickable">True</property>
+                    <property name="reorderable">True</property>
+                    <property name="sort_indicator">True</property>
+                    <property name="sort_column_id">1</property>
+                    <child>
+                      <object class="GtkCellRendererText"/>
+                      <attributes>
+                        <attribute name="text">1</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="user">
+                    <property name="title" translatable="yes">User</property>
+                    <child>
+                      <object class="GtkCellRendererText"/>
+                      <attributes>
+                        <attribute name="text">2</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="id">
+                    <property name="title" translatable="yes">ID</property>
+                    <child>
+                      <object class="GtkCellRendererText"/>
+                      <attributes>
+                        <attribute name="text">3</attribute>
+                      </attributes>
+                    </child>
+                  </object>
                 </child>
               </object>
               <packing>

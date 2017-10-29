@@ -13,6 +13,7 @@ use static_variables::GLOBAL_USERWINDOW;
 use static_variables::ITEMS_ON_SCREEN;
 use static_variables::USERS_ON_SCREEN;
 use static_variables::USER_SELECTED;
+use static_variables::PURCHASE_SELECTED;
 use suffix_rs::KDTree;
 use time;
 
@@ -102,31 +103,63 @@ pub fn search_entry_text_changed() {
 }
 
 
-
-pub fn purchase_selection_changed() {
-    unimplemented!()
-}
-
+//TODO: implement, but potentially with password check in middle time interval
 pub fn purchase_undo_handler() {
     unimplemented!()
 }
+//TODO: after undone, remove reselect in purchase log and rerender purchase label
 
 
+pub fn handle_purchase_select(id: u64) {
+    let selected: &mut Option<u64> = &mut *PURCHASE_SELECTED.lock().unwrap();
+    *selected = Some(id);
+
+    //TODO: set upper label
+
+    //TODO: set lower label
+}
 
 
-pub fn render_last_purchase(user: &str, drink: &str) {
+pub fn render_last_purchase(user: &str, drink: &str, ts: i64, id: u64) {
     //should be the same as used in the purchase struct
-    let timelabel = Local::now().format("%Y-%m-%d %H:%M:%S");
+    let timestamp = Local::now();
+    let timelabel = timestamp.format("%Y-%m-%d %H:%M:%S");
 
-    GLOBAL_USERWINDOW.lock()
-                     .expect("Global UserWindow variable does not exist anymore")
-                     .log_btn
-                     .set_label(&format!(
-        "User {} bought 1 {} at {}",
-        user,
-        drink,
-        timelabel
-    ));
+    {
+        GLOBAL_USERWINDOW.lock()
+                         .expect("Global UserWindow variable does not exist anymore")
+                         .log_btn
+                         .set_label(&format!(
+            "User {} bought 1 {} at {}",
+            user,
+            drink,
+            timelabel
+        ));
+    }
+
+    {
+        //add to purchase log list model (and potentially remove an old one)
+        let model: &mut ListStore = &mut GLOBAL_USERWINDOW.lock().unwrap().purchase_liststore;
+
+        let user_lbl: &&&str = &&user;
+        let item_lbl: &&&str = &&drink;
+        let epochmillis: &i64 = &ts;
+        let id: &u64 = &id;
+
+        model.insert_with_values(None, &[0, 1, 2, 3], &[epochmillis, item_lbl, user_lbl, id]);
+
+        //TODO: remove oldest one from model if n > 200, that is position = 0
+        let position0opt = model.get_iter_first();
+        //TODO: get size
+        let size = 199;
+
+        match position0opt {
+            Some(treeiter) => if size > 200 {
+                model.remove(&treeiter);
+            },
+            None => {}
+        }
+    }
 }
 
 

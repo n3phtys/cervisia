@@ -28,6 +28,7 @@ lazy_static! {
 
 
     pub static ref USER_SELECTED : Mutex<Option<u32>> = Mutex::new(None);
+    pub static ref PURCHASE_SELECTED : Mutex<Option<u64>> = Mutex::new(None);
     pub static ref USERS_ON_SCREEN : Mutex<Vec<u32>> = Mutex::new(Vec::new());
     pub static ref ITEMS_ON_SCREEN : Mutex<Vec<u32>> = Mutex::new(Vec::new());
 }

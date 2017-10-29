@@ -62,9 +62,10 @@ pub fn finalize_purchase(user_id: u32, item_id: u32, epoch_millis: i64) {
 
 
             let _ = bl.purchase(user_id, item_id, epoch_millis); //TODO: use result
+            let purchase_id = bl.datastore.purchase_count;
             let item_lbl = &bl.datastore.items[&item_id].name;
             let user_lbl = &bl.datastore.users[&user_id].username;
-            render_last_purchase(user_lbl, item_lbl);
+            render_last_purchase(user_lbl, item_lbl, epoch_millis, purchase_id);
 
             println!("render_last_purchase happened");
         }
