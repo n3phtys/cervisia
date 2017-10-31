@@ -21,6 +21,7 @@ use input_handling::user_btn_pressed;
 
 use cervisia_utilities::current_time;
 use input_handling::handle_purchase_select;
+use input_handling::handle_purchase_unselect;
 use input_handling::search_entry_text_changed;
 use static_variables::PURCHASE_SELECTED;
 
@@ -255,15 +256,19 @@ return placeholder;
                 let id: u64 = model.get_value(&iter, 3)
                                    .get::<u64>()
                                    .expect("Couldn't get purchase id value");
-                handle_purchase_select(id);
+                idle_add(move || {
+                    handle_purchase_select(id);
+                    Continue(false)
+                });
+            } else {
+                idle_add(handle_purchase_unselect);
             }
-            let idsel: Option<u64> = PURCHASE_SELECTED.lock().unwrap().clone();
-            println!("Purchase Selected #1: {:?}", idsel);
-            let idsel: Option<u64> = PURCHASE_SELECTED.lock().unwrap().clone();
-            println!("Purchase Selected #2: {:?}", idsel);
         });
     }
 
+    {
+        undo_log.set_sensitive(false);
+    }
 
 
     return UserWindowGtkComponents {

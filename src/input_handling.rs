@@ -5,6 +5,7 @@ use enqueue_purchase;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::UserWindowGtkComponents;
 use gtk::TreeIter;
+use gtk::idle_add;
 use rustix_bl::datastore::*;
 use rustix_bl::persistencer::TransientPersister;
 use rustix_bl::rustix_backend::RustixBackend;
@@ -123,15 +124,19 @@ pub fn purchase_undo_handler() {
 
         //after undone, reselect in purchase log and rerender purchase label
 
+        //TODO: potentially broken? unclear
         let was_the_last = bl.undo_purchase(id);
 
         //remove entry from purchase log
 
+
         let model: &mut ListStore = &mut GLOBAL_USERWINDOW.lock().unwrap().purchase_liststore;
         let size = model.iter_n_children(None);
 
-
         let iter: TreeIter = model.get_iter_first().unwrap();
+
+
+
 
         for n in 0..size {
             println!("iteration with n = {}", n);
@@ -143,61 +148,44 @@ pub fn purchase_undo_handler() {
                 //get previous one if one exists
 
                 println!("iter_nth_child with n = {}", n - 1);
-                //TODO: should fail-safe to newer one if no older one exists
-                let prev_opt = if n - 1 >= 0 { model.iter_nth_child(None, n - 1) } else {None};
-                println!("Reaching this first point 0");
-
-                println!("Reaching this first point A");
-
-                //set selection to prev
-
-                println!("Reaching this first point B");
-                if prev_opt.is_some() {
-                    println!("Reaching this first point C");
-                    let prev = prev_opt.unwrap();
-                    println!("Reaching this first point D");
-                    //TODO: breaks down (deadlock!!!) maybe selection is broken, or select_iter is
-                    GLOBAL_USERWINDOW.lock().unwrap().purchase_log_listview.get_selection().select_iter(&prev);
-                    println!("Reaching this first point E");
-                } else {
-                    println!("Reaching this first point F");
-                    //TODO: breaks down (deadlock!!!) maybe selection is broken or unselect_all is
-                    GLOBAL_USERWINDOW.lock().unwrap().purchase_log_listview.get_selection().unselect_all();
-                    println!("Reaching this first point G");
-                }
-
-                println!("Reaching this point too");
-
-
-                //delete element
-                model.remove(&iter);
-
-
-                println!("Reaching this last point");
             }
         }
 
 
+        println!("Reaching this point too");
+
+
+        //delete element
+        model.remove(&iter); //still broken when deleting non-single last
+
+
+        println!("Reaching this last point");
 
 
 
-        if was_the_last {
-            //copy new last item from purchase log into purchase label as string (if it was the last)
-            refresh_purchase_label_from_newest_log_element();
-        }
+        //copy new last item from purchase log into purchase label as string (if it was the last)
+        println!("Beginning Refresh");
+        idle_add(refresh_purchase_label_from_newest_log_element);
+        println!("Finished Refresh");
     }
 }
 
-pub fn refresh_purchase_label_from_newest_log_element() {
+pub fn refresh_purchase_label_from_newest_log_element() -> Continue {
     //reselect new last item from purchase log
 
-    let log_btn: &mut Button = &mut GLOBAL_USERWINDOW.lock().unwrap().log_btn;
+    let uw = &mut GLOBAL_USERWINDOW.lock().unwrap();
 
-    let model: &mut ListStore = &mut GLOBAL_USERWINDOW.lock().unwrap().purchase_liststore;
+    let log_btn: &Button = &uw.log_btn;
+
+    let model: &ListStore = &uw.purchase_liststore;
 
     let size = model.iter_n_children(None);
     println!("iter_nth_child with size = {}", size - 1);
-    let last_opt = if size - 1 >= 0 { model.iter_nth_child(None, size - 1) } else {None};
+    let last_opt = if size - 1 >= 0 {
+        model.iter_nth_child(None, size - 1)
+    } else {
+        None
+    };
 
 
     log_btn.set_label(
@@ -216,31 +204,89 @@ pub fn refresh_purchase_label_from_newest_log_element() {
             "No purchases since last bill".to_string()
         }),
     );
+
+    Continue(false)
 }
 
+pub fn handle_purchase_unselect() -> Continue {
+    {
+        let selected: &mut Option<u64> = &mut *PURCHASE_SELECTED.lock().unwrap();
+        *selected = None;
+    }
+
+    let w = &mut GLOBAL_USERWINDOW.lock()
+                                  .expect("Global UserWindow variable does not exist anymore");
+
+    w.undo_purchase_btn.set_sensitive(false);
+    w.log_upper_label.set_text("");
+    w.log_lower_label.set_text("");
+
+
+    Continue(false)
+}
 
 pub fn handle_purchase_select(id: u64) {
+    println!("handle_purchase_select A");
+
     let selected: &mut Option<u64> = &mut *PURCHASE_SELECTED.lock().unwrap();
     *selected = Some(id);
 
 
+    println!("handle_purchase_select B");
+
+
     let bl = GLOBAL_BACKEND.lock().unwrap();
+
+
+    println!("handle_purchase_select C for id = {}", id);
+
     match bl.datastore.get_purchase(id) {
+        //TODO: here comes out nonsense, with 0-2 as ids for consumer and item
         Some(Purchase::SimplePurchase {
             unique_id,
             timestamp_epoch_millis,
             item_id,
             consumer_id,
         }) => {
+            println!(
+                "handle_purchase_select D for unique_id = {}, timestamp = {},\
+                 item_id = {}, consumer_id = {}",
+                unique_id,
+                timestamp_epoch_millis,
+                item_id,
+                consumer_id
+            );
+
+
             let w = &mut GLOBAL_USERWINDOW.lock().expect(
                 "Global UserWindow variable does not exist anymore",
             );
 
+
+            println!("handle_purchase_select E");
+
+            w.undo_purchase_btn.set_sensitive(true);
+            println!(
+                "username = {} for id {}",
+                &bl.datastore.users[&consumer_id].username,
+                consumer_id
+            );
             w.log_upper_label.set_text(&bl.datastore.users[&consumer_id].username);
+            println!(
+                "itemname = {} for id {}",
+                &bl.datastore.items[&item_id].name,
+                item_id
+            );
             w.log_lower_label.set_text(&bl.datastore.items[&item_id].name);
+
+
+
+            println!("handle_purchase_select F");
         }
         _ => {}
     }
+
+    println!("handle_purchase_select G");
 }
 
 
