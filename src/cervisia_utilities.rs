@@ -49,6 +49,12 @@ pub fn enqueue_purchase(user_id: u32, item_id: u32, epoch_millis: i64) {
     finalize_purchase(user_id, item_id, epoch_millis);
 }
 
+pub fn current_time_millis() -> i64 {
+
+    let d = Local::now();
+    return (d.timestamp()  * 1000) + (d.nanosecond() as i64 / 1000000);
+}
+
 pub fn finalize_purchase(user_id: u32, item_id: u32, epoch_millis: i64) {
     //set on_idle task to call bl and write to database, followed by all the other interactions
 

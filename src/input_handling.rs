@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 
-use enqueue_purchase;
+use cervisia_utilities::*;
 use glade_builders::NUMBER_OF_USERS_PER_PAGE;
 use glade_builders::UserWindowGtkComponents;
 use gtk::TreeIter;
@@ -59,13 +59,12 @@ pub fn quickmenu_item_btn_pressed(index: usize) {
 
 
 
-
-    let epoch_seconds: i64 = Local::now().timestamp();
+    let epoch_millis: i64 = current_time_millis();
     {
         println!(
-            "buying {} in quickmenu at epoch seconds {}",
+            "buying {} in quickmenu at epoch millis {}",
             index,
-            epoch_seconds
+            epoch_millis
         );
 
 
@@ -78,7 +77,7 @@ pub fn quickmenu_item_btn_pressed(index: usize) {
             let item_id: u32 = ITEMS_ON_SCREEN.lock().unwrap()[index];
 
 
-            enqueue_purchase(*user_id, item_id, epoch_seconds);
+            enqueue_purchase(*user_id, item_id, epoch_millis);
         }
     }
 }
@@ -195,7 +194,7 @@ pub fn refresh_purchase_label_from_newest_log_element() -> Continue {
             let user = model.get_value(&last, 1).get::<String>().unwrap();
             let drink = model.get_value(&last, 2).get::<String>().unwrap();
             let secs = model.get_value(&last, 0).get::<i64>().unwrap();
-            let timelabel = Local.timestamp(secs, 0).format("%Y-%m-%d %H:%M:%S");
+            let timelabel = Local.timestamp(secs / 1000, 0).format("%Y-%m-%d %H:%M:%S");
 
             let x = format!("User {} bought 1 {} at {}", user, drink, &timelabel).to_string();
 
