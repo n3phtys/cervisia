@@ -116,7 +116,7 @@ pub fn purchase_undo_handler() {
 
         let bl = &mut GLOBAL_BACKEND.lock().unwrap();
 
-        let pur: Purchase = bl.datastore.get_purchase(id).unwrap();
+        let _: Purchase = bl.datastore.get_purchase(id).unwrap();
 
         //TODO: implement password check in middle time interval
 
@@ -124,7 +124,7 @@ pub fn purchase_undo_handler() {
         //after undone, reselect in purchase log and rerender purchase label
 
         //TODO: potentially broken? unclear
-        let was_the_last = bl.undo_purchase(id);
+        let _ = bl.undo_purchase(id);
 
         //remove entry from purchase log
 
