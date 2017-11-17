@@ -7,7 +7,10 @@ use gtk::{CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewCol
           WindowPosition, WindowType};
 use gtk::prelude::*;
 
+use serde_json::Value;
+
 use gtk::{Builder, Button, MessageDialog};
+use std::sync::Mutex;
 
 use gio::prelude::*;
 use gtk::{AboutDialog, AboutDialogExt, BoxExt, ContainerExt, DialogExt, GtkApplicationExt,
@@ -215,6 +218,8 @@ return placeholder;
     let purchase_liststore: gtk::ListStore = builder.get_object("purchase_liststore")
                                                     .expect("Couldn't get purchase_liststore");
 
+    let wizard_gen: gtk::Assistant = builder.get_object("wizard_gen").expect("Couldn't get wizard_gen");
+
 
     {
         purchase_liststore.clear();
@@ -287,6 +292,7 @@ return placeholder;
         undo_purchase_btn: undo_log,
         close_log_btn: close_log,
         purchase_liststore: purchase_liststore,
+        wizard_gen: wizard_gen,
     };
 }
 
@@ -306,6 +312,7 @@ pub struct UserWindowGtkComponents {
     pub undo_purchase_btn: gtk::Button,
     pub close_log_btn: gtk::Button,
     pub purchase_liststore: gtk::ListStore,
+    pub wizard_gen: gtk::Assistant,
 }
 
 
@@ -315,3 +322,136 @@ unsafe impl Sync for QuickmenuGtkComponents {} //hack
 unsafe impl Send for QuickmenuGtkComponents {} //hack
 unsafe impl Sync for UserWindowGtkComponents {} //hack
 unsafe impl Send for UserWindowGtkComponents {} //hack
+
+
+
+pub trait AssistantDialogueable{
+
+    fn unique_assistant_id(&self) -> &str;
+
+    fn get_multiselect_tree_store(&self) -> gtk::TreeModel;
+    fn get_singleselect_tree_store(&self) -> gtk::TreeModel;
+    fn get_combo_box_primary_type(&self) -> Vec<(&str, u64)>;
+    fn get_autocomplete_words(&self) -> Vec<&str>;
+
+    fn has_multi_select_view(&self) -> bool;
+    fn has_single_select_view(&self) -> bool;
+    fn has_primary_typecombo_box(&self) -> bool;
+    fn has_normal_text_field(&self) -> bool;
+    fn has_autocomplete_text_field(&self) -> bool;
+    fn has_u64input_field(&self) -> bool;
+
+    fn title(&self) -> &str;
+    fn description(&self) -> &str;
+    fn apply_label(&self) -> &str;
+
+    fn multi_select_label(&self) -> &str;
+    fn single_select_label(&self) -> &str;
+    fn combo_box_label(&self) -> &str;
+    fn normal_text_field_label(&self) -> &str;
+    fn autocomplete_text_field_label(&self) -> &str;
+    fn u64input_label(&self) -> &str;
+
+    fn assistant_apply_result_json(&self, json: Value);
+
+}
+
+pub enum AssistantDialogue {
+    Donation,
+    UserAdministration,
+    ItemAdministration
+}
+
+impl AssistantDialogueable for AssistantDialogue {
+    fn unique_assistant_id(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn get_multiselect_tree_store(&self) -> gtk::TreeModel {
+        unimplemented!()
+    }
+
+    fn get_singleselect_tree_store(&self) -> gtk::TreeModel {
+        unimplemented!()
+    }
+
+    fn get_combo_box_primary_type(&self) -> Vec<(&str, u64)> {
+        unimplemented!()
+    }
+
+    fn get_autocomplete_words(&self) -> Vec<&str> {
+        unimplemented!()
+    }
+
+    fn has_multi_select_view(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn has_single_select_view(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn has_primary_typecombo_box(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn has_normal_text_field(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn has_autocomplete_text_field(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn has_u64input_field(&self) -> bool {
+        unimplemented!()
+    }
+
+    fn title(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn description(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn apply_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn multi_select_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn single_select_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn combo_box_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn normal_text_field_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn autocomplete_text_field_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn u64input_label(&self) -> &str {
+        unimplemented!()
+    }
+
+    fn assistant_apply_result_json(&self, json: Value) {
+        unimplemented!()
+    }
+}
+
+
+fn setup_wizard_for(window_mutex: Mutex<UserWindowGtkComponents>, instance_mutex: Mutex<AssistantDialogue>) {
+        //TODO: set labels and data sources via instance
+
+    unimplemented!();
+
+}

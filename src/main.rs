@@ -5,6 +5,8 @@ extern crate gio;
 extern crate glib;
 extern crate gtk;
 extern crate rand;
+extern crate serde_json;
+
 
 use gtk::{CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewColumn, Window,
           WindowPosition, WindowType};
@@ -215,14 +217,40 @@ fn main() {
 
             input_handling::search_entry_text_changed();
 
+            {
+                let window: &gtk::ApplicationWindow =
+                    &GLOBAL_USERWINDOW.lock().unwrap().application_window;
+                window.set_application(Some(app));
+                window.show();
+
+
+                add_application_actions(app);
+            }
+
+            {
+                let wizard_gen: &gtk::Assistant =
+                    &GLOBAL_USERWINDOW.lock().unwrap().wizard_gen;
+
+                wizard_gen.connect_cancel( move |_| {
+                    println!("connect_cancel");
+
+                    let wizard_gen: &gtk::Assistant =
+                        &GLOBAL_USERWINDOW.lock().unwrap().wizard_gen;
+                    wizard_gen.hide();
+                });
+
+                wizard_gen.connect_close( move |_| {
+                    println!("connect_close");
+
+                    let wizard_gen: &gtk::Assistant =
+                        &GLOBAL_USERWINDOW.lock().unwrap().wizard_gen;
+                    wizard_gen.hide();
+                });
 
 
 
-            let window: &gtk::ApplicationWindow =
-                &GLOBAL_USERWINDOW.lock().unwrap().application_window;
-            window.set_application(Some(app));
-            window.show();
-            add_application_actions(app);
+                wizard_gen.show();
+            }
 
 
             let _ = app.register(None).expect("Registration failed");

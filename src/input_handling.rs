@@ -430,3 +430,5 @@ fn render_user_buttons(searchterm: &str) {
 
     //TODO: deal with action bar, etc.
 }
+
+
