@@ -1,5 +1,11 @@
 #![allow(unused_imports)]
 
+extern crate config;
+extern crate lettre;
+extern crate futures;
+extern crate hyper;
+
+extern crate notify;
 
 extern crate gio;
 extern crate glib;
@@ -73,6 +79,7 @@ use static_variables::GLOBAL_BACKEND;
 use static_variables::GLOBAL_USERWINDOW;
 use static_variables::USERS_ON_SCREEN;
 use static_variables::USER_SELECTED;
+use static_variables::PROGRAM_CONFIG;
 
 // make moving clones into closures more convenient
 /*macro_rules! clone {
@@ -200,6 +207,11 @@ fn show_quickmenu(
 
 
 fn main() {
+    {
+        let conf = static_variables::PROGRAM_CONFIG.get("debug").unwrap();
+        println!("Debug = {}", conf);
+    }
+
     let application = gtk::Application::new("cervisia.gtk", gio::ApplicationFlags::empty()).expect(
         "Initialization failed...",
     );
@@ -249,7 +261,7 @@ fn main() {
 
 
 
-                wizard_gen.show();
+                //wizard_gen.show();
             }
 
 

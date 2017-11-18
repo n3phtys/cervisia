@@ -1,0 +1,6 @@
+debug = false
+main-window-resolution-width = 1280
+main-window-resolution-height = 720
+users-rows = 5
+users-columns = 9
+purchase-log-length = 100
