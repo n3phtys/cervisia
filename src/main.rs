@@ -10,6 +10,7 @@ extern crate notify;
 extern crate gio;
 extern crate glib;
 extern crate gtk;
+extern crate gdk;
 extern crate rand;
 extern crate serde_json;
 
@@ -44,6 +45,7 @@ pub mod glade_builders;
 pub mod input_handling;
 pub mod static_variables;
 pub mod cervisia_utilities;
+pub mod assistant_dialogs;
 
 
 use cervisia_utilities::*;
@@ -112,7 +114,7 @@ fn setup_mock_data() {
         bl.create_user("Vall".to_string());
         bl.create_user("rad(i)".to_string());
 
-        for i in 0..250 {
+        for i in 0..50 {
             bl.create_user("GenUser #".to_string() + &i.to_string());
         }
 
@@ -136,7 +138,7 @@ fn setup_mock_data() {
 
         //random purchases for the existing users
         for user_id in 0..(bl.datastore.users.len() as u32) {
-            let nr_of_purchases: u32 = rng.gen_range(0u32, 10u32);
+            let nr_of_purchases: u32 = rng.gen_range(0u32, 5u32);
             for _ in 0..nr_of_purchases {
                 timestamp_counter += 1;
                 let item_id: u32 = rng.gen_range(0u32, bl.datastore.items.len() as u32);
@@ -262,8 +264,11 @@ fn main() {
 
 
                 //wizard_gen.show();
-            }
 
+            }
+            {
+                assistant_dialogs::setup_util_page_for();
+            }
 
             let _ = app.register(None).expect("Registration failed");
         });

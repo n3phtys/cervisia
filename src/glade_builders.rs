@@ -6,7 +6,8 @@ use gtk;
 use gtk::{CellRendererText, Label, ListStore, Orientation, TreeView, TreeViewColumn, Window,
           WindowPosition, WindowType};
 use gtk::prelude::*;
-
+use gtk::WindowExt;
+use gdk::Gravity;
 use serde_json::Value;
 
 use gtk::{Builder, Button, MessageDialog};
@@ -26,7 +27,7 @@ use cervisia_utilities::current_time;
 use input_handling::handle_purchase_select;
 use input_handling::handle_purchase_unselect;
 use input_handling::search_entry_text_changed;
-use static_variables::PURCHASE_SELECTED;
+use static_variables::*;
 
 pub const NUMBER_OF_USERS_PER_PAGE: u8 = 40;
 
@@ -276,9 +277,17 @@ return placeholder;
     }
 
 
+    let app_window: gtk::ApplicationWindow = builder.get_object("user_selection_window")
+        .expect("Couldn't get user_selection_window");
+
+    let width: i32 = PROGRAM_CONFIG.get("main-window-resolution-width").unwrap().parse::<i32>().unwrap();
+    let height: i32 = PROGRAM_CONFIG.get("main-window-resolution-height").unwrap().parse::<i32>().unwrap();
+
+    app_window.set_default_size(width, height);
+    app_window.set_gravity(Gravity::Center);
+
     return UserWindowGtkComponents {
-        application_window: builder.get_object("user_selection_window")
-                                   .expect("Couldn't get user_selection_window"),
+        application_window: app_window,
         user_btn: user_btns,
         action_btn: action_btns,
         action_bar: action_box_bar,

@@ -694,12 +694,10 @@
   </object>
   <object class="GtkAssistant" id="wizard_gen">
     <property name="can_focus">False</property>
-    <property name="type">popup</property>
     <property name="title" translatable="yes">Wizard</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center</property>
-    <property name="urgency_hint">True</property>
     <property name="transient_for">user_selection_window</property>
     <property name="attached_to">user_selection_window</property>
     <property name="use_header_bar">0</property>
@@ -738,6 +736,9 @@
     <child>
       <placeholder/>
     </child>
+    <child>
+      <placeholder/>
+    </child>
     <child internal-child="action_area">
       <object class="GtkBox">
         <property name="can_focus">False</property>
@@ -751,7 +752,7 @@
         <property name="spacing">6</property>
       </object>
       <packing>
-        <property name="has_padding">False</property>
+        <property name="complete">True</property>
       </packing>
     </child>
   </object>
