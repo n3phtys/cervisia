@@ -34,20 +34,20 @@ chrono = "0.4"
 lazy_static = "0.2"
 time = "0.1"
 serde_json = "1.0"
-config = "^0.6"
-lettre = "^0.7"
-notify = "^4.0"
-hyper = "^0.11"
-futures = "^0.1"
+config = "0.6"
+lettre = "0.7"
+notify = "4.0"
+hyper = "0.11"
+futures = "0.1"
 
 [dependencies.gdk]
-version = "^0.6.0"
+version = "0.6.0"
 default-features = false # do not include the default features, and optionally
                          # cherry-pick individual features
 features = ["v3_20"]
 
 [dependencies.gtk]
-version = "^0.2.0"
+version = "0.2.0"
 default-features = false # do not include the default features, and optionally
                          # cherry-pick individual features
 features = ["v3_20"]
@@ -56,7 +56,13 @@ features = ["v3_20"]
 
 
 [dependencies.gio]
-version = "^0.2.0"
+version = "0.2.0"
+default-features = false # do not include the default features, and optionally
+                         # cherry-pick individual features
+features = ["v2_40"]
+
+[dependencies.gio-sys]
+version = "0.4.0"
 default-features = false # do not include the default features, and optionally
                          # cherry-pick individual features
 features = ["v2_40"]
